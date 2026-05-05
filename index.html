@@ -193,42 +193,42 @@ input[type=range].공감::-webkit-slider-thumb { -webkit-appearance:none; width:
 /* TITLE CARDS */
 .title-grid { display:flex; flex-direction:column; gap:10px; margin-bottom:28px; }
 .title-card {
-  background:var(--surface); border:1.5px solid var(--border); border-radius:12px;
-  padding:16px 18px; cursor:pointer; transition:all 0.2s; position:relative; overflow:hidden;
+  background:var(--surface); border:1.5px solid var(--border); border-radius:8px;
+  padding:8px 12px; cursor:pointer; transition:all 0.2s; position:relative; overflow:hidden;
 }
-.title-card::before { content:''; position:absolute; top:0; left:0; right:0; height:3px; }
+.title-card::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; }
 .title-card[data-p="흥미"]::before { background:var(--clr-흥미); }
 .title-card[data-p="재미"]::before { background:var(--clr-재미); }
 .title-card[data-p="정보"]::before { background:var(--clr-정보); }
 .title-card[data-p="공감"]::before { background:var(--clr-공감); }
-.title-card:hover { border-color:var(--border2); transform:translateY(-1px); }
+.title-card:hover { border-color:var(--border2); }
 .title-card.sel { border-color:var(--accent); background:rgba(124,106,255,0.07); }
 
-.tc-top { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+.tc-top { display:flex; align-items:center; justify-content:space-between; gap:8px; }
 .tc-left { flex:1; min-width:0; }
-.tc-badges { display:flex; gap:4px; flex-wrap:wrap; margin-bottom:8px; }
-.tc-badge { font-size:10px; font-weight:700; padding:2px 8px; border-radius:5px; letter-spacing:0.5px; }
+.tc-badges { display:flex; gap:3px; flex-wrap:wrap; margin-bottom:4px; }
+.tc-badge { font-size:9px; font-weight:700; padding:1px 6px; border-radius:4px; letter-spacing:0.5px; }
 .tc-badge.흥미 { background:rgba(255,77,109,0.18); color:var(--clr-흥미); }
 .tc-badge.재미 { background:rgba(255,209,102,0.18); color:var(--clr-재미); }
 .tc-badge.정보 { background:rgba(76,201,240,0.18); color:var(--clr-정보); }
 .tc-badge.공감 { background:rgba(123,237,159,0.18); color:var(--clr-공감); }
-.tc-text { font-size:15px; font-weight:700; line-height:1.5; color:var(--text); font-family:'Gmarket Sans',sans-serif; }
+.tc-text { font-size:13px; font-weight:600; line-height:1.4; color:var(--text); font-family:'Gmarket Sans',sans-serif; }
 
-.tc-bars { display:flex; flex-direction:column; gap:4px; min-width:120px; padding-top:4px; }
-.tc-bar-row { display:flex; align-items:center; gap:6px; }
-.tc-bar-lbl { font-size:10px; color:var(--text3); width:18px; text-align:right; flex-shrink:0; }
-.tc-bar-track { flex:1; height:3px; background:var(--border); border-radius:2px; overflow:hidden; }
+.tc-bars { display:flex; flex-direction:column; gap:3px; min-width:100px; }
+.tc-bar-row { display:flex; align-items:center; gap:4px; }
+.tc-bar-lbl { font-size:9px; color:var(--text3); width:16px; text-align:right; flex-shrink:0; }
+.tc-bar-track { flex:1; height:2px; background:var(--border); border-radius:2px; overflow:hidden; }
 .tc-bar-fill { height:100%; border-radius:2px; transition:width 0.5s ease; }
 .tc-bar-fill.흥미 { background:var(--clr-흥미); }
 .tc-bar-fill.재미 { background:var(--clr-재미); }
 .tc-bar-fill.정보 { background:var(--clr-정보); }
 .tc-bar-fill.공감 { background:var(--clr-공감); }
-.tc-bar-num { font-size:10px; color:var(--text3); width:24px; text-align:right; flex-shrink:0; }
+.tc-bar-num { font-size:9px; color:var(--text3); width:22px; text-align:right; flex-shrink:0; }
 
 .tc-sel-dot {
-  position:absolute; bottom:14px; right:14px; width:20px; height:20px;
+  position:absolute; bottom:8px; right:8px; width:16px; height:16px;
   border-radius:50%; background:var(--accent); color:#fff;
-  font-size:10px; font-weight:700; display:none; align-items:center; justify-content:center;
+  font-size:9px; font-weight:700; display:none; align-items:center; justify-content:center;
 }
 .title-card.sel .tc-sel-dot { display:flex; }
 
@@ -315,6 +315,12 @@ input[type=range].공감::-webkit-slider-thumb { -webkit-appearance:none; width:
     <div id="kbSec" style="display:none">
       <div class="sec-title">학습 현황</div>
       <div class="kb-card" id="kbCard"></div>
+    </div>
+    <div>
+      <div class="sec-title">저장된 타이틀</div>
+      <div id="savedTitlesList" style="display:flex;flex-direction:column;gap:6px;">
+        <div style="font-size:12px;color:var(--text3)">저장된 타이틀 없음</div>
+      </div>
     </div>
     <div>
       <div class="sec-title">Threads 설정</div>
@@ -418,6 +424,7 @@ window.addEventListener('DOMContentLoaded', () => {
   const saved = localStorage.getItem('threads_token');
   if (saved) document.getElementById('threadsToken').value = saved;
   loadKBList();
+  renderSavedTitles();
 });
 
 // ── COUNT ──
@@ -712,6 +719,10 @@ function renderResults() {
             </div>`).join('')}
         </div>
       </div>
+      <div style="display:flex;gap:4px;margin-top:6px;">
+        <button class="btn-sm acc" style="font-size:10px;padding:3px 8px;" onclick="event.stopPropagation();generateBodyForTitle(${i})">본문 생성</button>
+        <button class="btn-sm" style="font-size:10px;padding:3px 8px;" onclick="event.stopPropagation();saveTitle('${t.text.replace(/'/g,"\\'")}')">저장</button>
+      </div>
       <div class="tc-sel-dot">✓</div>
     </div>`).join('');
 
@@ -767,32 +778,78 @@ function selTitle(i) {
 
 // 재각색: 선택된 타이틀 기준으로 본문 재생성
 // 참고 파일: kb 객체 (학습된 파일 요약)
-async function regenBody() {
+// 타이틀 선택 후 본문 생성 (핵심: 타이틀 하나의 주제만 일관되게)
+async function generateBodyForTitle(idx) {
   if (!result || !kb) return;
-  const t = result.titles[selTitleIdx];
+  selTitleIdx = idx;
+  renderResults();
+  const t = result.titles[idx];
   const el = document.getElementById('cb-body');
-  el.innerHTML = '<span style="color:var(--text3)">재각색 중...</span>';
+  if (!el) return;
+  el.innerHTML = '<span style="color:var(--text3)">본문 생성 중...</span>';
+
+  const partsText = (kb.parts||[]).map(p => `[${p.type}] ${p.content}`).join('\n');
+  const contextText = kb.context || kb.summary || '';
+
+  const prompt = `당신은 공시 콘텐츠 전문 작가입니다. 이모지 사용 금지.
+
+## 이번 콘텐츠 타이틀 (이 주제 하나만 처음부터 끝까지 일관되게 다룰 것)
+${t.text}
+
+## 반드시 지켜야 할 맥락 (고정)
+${contextText}
+
+## 활용 가능한 소재 부품 (타이틀 주제에 맞는 것만 골라 사용)
+${partsText || (kb.keyMessages||[]).map(m => `[메시지] ${m}`).join('\n')}
+
+## 작성 규칙
+- 타이틀의 주제 하나만 처음부터 끝까지 일관되게 다룰 것. 다른 주제 섞지 말 것.
+- 서순 준수: 훅 → 문제제기 → 공감 → 해결/정보 → 마무리
+- 맥락(고정)은 유지, 소재 부품은 타이틀에 맞는 것만 선택
+- 사연/표현은 각색 가능, 핵심 지식은 유지
+- 이모지 사용 금지
+- 5-7문단, 텍스트만 반환`;
 
   try {
     const res = await fetch("/.netlify/functions/claude", {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ model:'claude-sonnet-4-5', max_tokens:2000,
-        messages:[{ role:'user', content:`타이틀: ${t.text}
-속성: ${t.cats.join(', ')}
-학습 요약: ${kb.summary}
-핵심 메시지: ${(kb.keyMessages||[]).join(' / ')}
-키워드: ${(kb.keywords||[]).join(', ')}
-
-위 타이틀과 속성에 맞게 본문을 재각색하세요.
-- 학습 파일의 실제 내용(사연, 사례, 수치)을 구체적으로 반영
-- 사연은 각색 가능, 해결책은 파일 내용 기반으로 구체적으로 제시
-- 이모지 사용 금지
-- 5-7문단, 텍스트만 반환` }] })
+      body: JSON.stringify({ model:'claude-sonnet-4-5', max_tokens:2000, messages:[{ role:'user', content:prompt }] })
     });
     const d = await res.json();
     if (d.error) throw new Error(d.error.message);
     el.textContent = d.content[0].text.trim();
   } catch(e) { el.textContent = '오류가 발생했습니다.'; }
+}
+
+// 재각색도 동일 원칙 적용
+async function regenBody() {
+  if (!result || !kb) return;
+  generateBodyForTitle(selTitleIdx);
+}
+
+// 타이틀 저장
+let savedTitles = JSON.parse(localStorage.getItem('saved_titles')||'[]');
+function saveTitle(text) {
+  if (savedTitles.includes(text)) { showToast('이미 저장된 타이틀이에요'); return; }
+  savedTitles.push(text);
+  localStorage.setItem('saved_titles', JSON.stringify(savedTitles));
+  showToast('저장됐어요');
+  renderSavedTitles();
+}
+function renderSavedTitles() {
+  const el = document.getElementById('savedTitlesList');
+  if (!el) return;
+  if (savedTitles.length === 0) { el.innerHTML = '<div style="font-size:12px;color:var(--text3)">저장된 타이틀 없음</div>'; return; }
+  el.innerHTML = savedTitles.map((t,i) => `
+    <div style="display:flex;align-items:center;gap:6px;padding:6px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;">
+      <span style="flex:1;font-size:12px;color:var(--text2)">${t}</span>
+      <button onclick="deleteSavedTitle(${i})" style="font-size:11px;padding:1px 6px;background:transparent;border:1px solid var(--border2);color:var(--clr-흥미);border-radius:4px;cursor:pointer;">×</button>
+    </div>`).join('');
+}
+function deleteSavedTitle(i) {
+  savedTitles.splice(i,1);
+  localStorage.setItem('saved_titles', JSON.stringify(savedTitles));
+  renderSavedTitles();
 }
 
 // 스레드 재작성: Claude API로 본문을 스레드 말투로 변환
