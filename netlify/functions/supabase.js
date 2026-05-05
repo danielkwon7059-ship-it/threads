@@ -62,6 +62,51 @@ exports.handler = async (event) => {
       return { statusCode: 200, headers, body: JSON.stringify(result) };
     }
 
+    if (action === 'saveContext') {
+      const res = await fetch(`${SUPA_URL}/rest/v1/context`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPA_KEY,
+          'Authorization': `Bearer ${SUPA_KEY}`,
+          'Prefer': 'return=representation'
+        },
+        body: JSON.stringify(data)
+      });
+      const result = await res.json();
+      return { statusCode: 200, headers, body: JSON.stringify(result) };
+    }
+
+    if (action === 'saveParts') {
+      const res = await fetch(`${SUPA_URL}/rest/v1/parts`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPA_KEY,
+          'Authorization': `Bearer ${SUPA_KEY}`,
+          'Prefer': 'return=representation'
+        },
+        body: JSON.stringify(data)
+      });
+      const result = await res.json();
+      return { statusCode: 200, headers, body: JSON.stringify(result) };
+    }
+
+    if (action === 'loadParts') {
+      const kbId = data?.kb_id;
+      const [ctxRes, partsRes] = await Promise.all([
+        fetch(`${SUPA_URL}/rest/v1/context?kb_id=eq.${kbId}`, {
+          headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}` }
+        }),
+        fetch(`${SUPA_URL}/rest/v1/parts?kb_id=eq.${kbId}`, {
+          headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}` }
+        })
+      ]);
+      const ctx = await ctxRes.json();
+      const parts = await partsRes.json();
+      return { statusCode: 200, headers, body: JSON.stringify({ context: ctx[0]?.content || '', parts }) };
+    }
+
     return { statusCode: 400, headers, body: JSON.stringify({ error: 'Unknown action' }) };
 
   } catch (e) {
