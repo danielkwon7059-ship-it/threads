@@ -520,7 +520,7 @@ async function learnFiles() {
 
   const msgContent = [];
   contents.filter(f => f.type === 'text').forEach(f => {
-    msgContent.push({ type:'text', text:`\n=== 파일: ${f.name} ===\n${f.content.slice(0,40000)}` });
+    msgContent.push({ type:'text', text:`\n=== 파일: ${f.name} ===\n${f.content.slice(0,20000)}` });
   });
   contents.filter(f => f.type === 'pdf').forEach(f => {
     msgContent.push({ type:'document', source:{ type:'base64', media_type:'application/pdf', data:f.data } });
@@ -614,20 +614,21 @@ ${toneHint ? `톤: ${toneHint}` : ''}
 - 5-7문단, 텍스트만 반환 (JSON 아님)`;
 
   try {
-    // 두 호출 병렬 실행
-    const [resMeta, resBody] = await Promise.all([
-      fetch("/.netlify/functions/claude", {
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ model:'claude-sonnet-4-5', max_tokens:1200, messages:[{ role:'user', content:promptMeta }] })
-      }),
-      fetch("/.netlify/functions/claude", {
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ model:'claude-sonnet-4-5', max_tokens:2000, messages:[{ role:'user', content:promptBody }] })
-      })
-    ]);
-
-    const [dMeta, dBody] = await Promise.all([resMeta.json(), resBody.json()]);
+    // 순차 실행 (rate limit 방지)
+    const resMeta = await fetch("/.netlify/functions/claude", {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ model:'claude-sonnet-4-5', max_tokens:1200, messages:[{ role:'user', content:promptMeta }] })
+    });
+    const dMeta = await resMeta.json();
     if (dMeta.error) throw new Error(dMeta.error.message);
+
+    await new Promise(r => setTimeout(r, 3000)); // 3초 대기
+
+    const resBody = await fetch("/.netlify/functions/claude", {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ model:'claude-sonnet-4-5', max_tokens:2000, messages:[{ role:'user', content:promptBody }] })
+    });
+    const dBody = await resBody.json();
     if (dBody.error) throw new Error(dBody.error.message);
 
     result = safeParseJSON(dMeta.content[0].text);
