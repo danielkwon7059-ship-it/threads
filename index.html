@@ -1006,39 +1006,77 @@ async function loadKBList() {
       el.innerHTML = '<div style="font-size:12px;color:var(--text3)">저장된 학습 없음</div>';
       return;
     }
+
+    // 전체 KB 통합 로드
+    await loadAllKB(data);
+
     el.innerHTML = data.map(k => `
-      <div onclick="loadKB(${JSON.stringify(k).replace(/"/g,'&quot;')})"
-        style="padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;cursor:pointer;transition:all 0.15s;"
-        onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
-        <div style="font-size:12px;font-weight:600;color:var(--text2)">${k.name || '이름없음'}</div>
-        <div style="font-size:11px;color:var(--text3);margin-top:2px">${new Date(k.created_at).toLocaleDateString('ko-KR')}</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;">
+        <div style="min-width:0;flex:1;">
+          <div style="font-size:12px;font-weight:600;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${k.name || '이름없음'}</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px">${new Date(k.created_at).toLocaleDateString('ko-KR')}</div>
+        </div>
+        <button onclick="deleteKB(${k.id}, this)" style="flex-shrink:0;margin-left:8px;font-size:11px;padding:3px 8px;border-radius:5px;background:transparent;border:1px solid var(--border2);color:var(--clr-흥미);cursor:pointer;">삭제</button>
       </div>`).join('');
   } catch(e) {
     document.getElementById('kbList').innerHTML = '<div style="font-size:12px;color:var(--text3)">불러오기 실패</div>';
   }
 }
 
-async function loadKB(k) {
+async function loadAllKB(kbList) {
+  // 전체 KB의 parts/context를 통합해서 kb 객체 구성
+  const allParts = [];
+  const allMessages = [];
+  const allKeywords = [];
+  let contextText = '';
+  let topic = '';
+  let audience = '';
+  let tone = '';
+
+  for (const k of kbList) {
+    if (k.topic) topic = k.topic;
+    if (k.audience) audience = k.audience;
+    if (k.tone) tone = k.tone;
+    try {
+      const pRes = await fetch('/.netlify/functions/supabase', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'loadParts', data: { kb_id: k.id } })
+      });
+      const d = await pRes.json();
+      if (d.context) contextText += (contextText ? '\n' : '') + d.context;
+      if (d.parts) allParts.push(...d.parts);
+    } catch(e) {}
+    try { allMessages.push(...JSON.parse(k.key_messages||'[]')); } catch(e) {}
+    try { allKeywords.push(...JSON.parse(k.keywords||'[]')); } catch(e) {}
+  }
+
   kb = {
-    topic: k.topic, keyMessages: JSON.parse(k.key_messages||'[]'),
-    tone: k.tone, keywords: JSON.parse(k.keywords||'[]'),
-    audience: k.audience, contentType: k.content_type,
-    summary: k.summary, _count: 1, _id: k.id
+    topic, audience, tone,
+    keyMessages: [...new Set(allMessages)],
+    keywords: [...new Set(allKeywords)],
+    summary: kbList.map(k => k.summary).filter(Boolean).join(' / '),
+    context: contextText,
+    parts: allParts,
+    _count: kbList.length
   };
-  // context + parts 불러오기
-  try {
-    const res = await fetch('/.netlify/functions/supabase', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'loadParts', data: { kb_id: k.id } })
-    });
-    const d = await res.json();
-    if (d.context) kb.context = d.context;
-    if (d.parts && d.parts.length > 0) kb.parts = d.parts;
-  } catch(e) { console.log('parts 불러오기 실패', e); }
   renderKB();
   document.getElementById('genBtn').disabled = false;
   setStep(2);
-  showToast('✓ 학습 데이터 불러왔어요');
+}
+
+async function deleteKB(id, btn) {
+  if (!confirm('삭제할까요?')) return;
+  btn.textContent = '...';
+  try {
+    await fetch('/.netlify/functions/supabase', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'deleteKB', data: { id } })
+    });
+    showToast('삭제됐어요');
+    loadKBList();
+  } catch(e) {
+    showToast('삭제 실패');
+  }
 }
 
 // ── 예약 발행 ──
