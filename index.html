@@ -333,42 +333,24 @@ input[type=range].공감::-webkit-slider-thumb { -webkit-appearance:none; width:
       <h2>콘텐츠 조건 설정 <span class="badge">STEP 2</span></h2>
 
       <div class="slider-section">
-        <div class="sec-title" style="margin-bottom:14px">속성 비중 조절</div>
-        <div class="weight-bar" id="weightBar">
-          <div class="wb-seg 흥미" id="wb-흥미" style="width:25%"></div>
-          <div class="wb-seg 재미" id="wb-재미" style="width:25%"></div>
-          <div class="wb-seg 정보" id="wb-정보" style="width:25%"></div>
-          <div class="wb-seg 공감" id="wb-공감" style="width:25%"></div>
-        </div>
-        <div class="slider-grid">
-          <div class="slider-item" data-cat="흥미">
-            <div class="slider-head">
-              <span class="slider-label 흥미">흥미</span>
-              <span class="slider-val 흥미" id="sv-흥미">50</span>
-            </div>
-            <input type="range" class="흥미" id="sl-흥미" min="0" max="100" value="50" oninput="onSlide('흥미',this.value)">
-          </div>
-          <div class="slider-item" data-cat="재미">
-            <div class="slider-head">
-              <span class="slider-label 재미">재미</span>
-              <span class="slider-val 재미" id="sv-재미">50</span>
-            </div>
-            <input type="range" class="재미" id="sl-재미" min="0" max="100" value="50" oninput="onSlide('재미',this.value)">
-          </div>
-          <div class="slider-item" data-cat="정보">
-            <div class="slider-head">
-              <span class="slider-label 정보">정보</span>
-              <span class="slider-val 정보" id="sv-정보">50</span>
-            </div>
-            <input type="range" class="정보" id="sl-정보" min="0" max="100" value="50" oninput="onSlide('정보',this.value)">
-          </div>
-          <div class="slider-item" data-cat="공감">
-            <div class="slider-head">
-              <span class="slider-label 공감">공감</span>
-              <span class="slider-val 공감" id="sv-공감">50</span>
-            </div>
-            <input type="range" class="공감" id="sl-공감" min="0" max="100" value="50" oninput="onSlide('공감',this.value)">
-          </div>
+        <div class="sec-title" style="margin-bottom:14px">포함할 속성 선택</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:8px 16px;border-radius:8px;border:1.5px solid rgba(255,77,109,0.4);background:var(--surface2);transition:all 0.15s;" id="chk-label-흥미">
+            <input type="checkbox" id="chk-흥미" checked onchange="updateChkStyle('흥미')" style="display:none">
+            <span style="font-size:13px;font-weight:700;color:var(--clr-흥미)">흥미</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:8px 16px;border-radius:8px;border:1.5px solid rgba(255,209,102,0.4);background:var(--surface2);transition:all 0.15s;" id="chk-label-재미">
+            <input type="checkbox" id="chk-재미" checked onchange="updateChkStyle('재미')" style="display:none">
+            <span style="font-size:13px;font-weight:700;color:var(--clr-재미)">재미</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:8px 16px;border-radius:8px;border:1.5px solid rgba(76,201,240,0.4);background:var(--surface2);transition:all 0.15s;" id="chk-label-정보">
+            <input type="checkbox" id="chk-정보" checked onchange="updateChkStyle('정보')" style="display:none">
+            <span style="font-size:13px;font-weight:700;color:var(--clr-정보)">정보</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:8px 16px;border-radius:8px;border:1.5px solid rgba(123,237,159,0.4);background:var(--surface2);transition:all 0.15s;" id="chk-label-공감">
+            <input type="checkbox" id="chk-공감" checked onchange="updateChkStyle('공감')" style="display:none">
+            <span style="font-size:13px;font-weight:700;color:var(--clr-공감)">공감</span>
+          </label>
         </div>
       </div>
 
@@ -417,22 +399,22 @@ let selTitleIdx = 0;
 let result = null;
 const weights = { 흥미:50, 재미:50, 정보:50, 공감:50 };
 
-// ── SLIDERS ──
-function onSlide(cat, val) {
-  weights[cat] = parseInt(val);
-  document.getElementById('sv-' + cat).textContent = val;
-  updateWeightBar();
+// ── CHECKBOXES ──
+function getSelectedCats() {
+  return ['흥미','재미','정보','공감'].filter(c => document.getElementById('chk-'+c)?.checked);
 }
-function updateWeightBar() {
-  const total = Object.values(weights).reduce((a,b) => a+b, 0) || 1;
-  ['흥미','재미','정보','공감'].forEach(c => {
-    document.getElementById('wb-' + c).style.width = ((weights[c]/total)*100).toFixed(1) + '%';
-  });
+function updateChkStyle(cat) {
+  const checked = document.getElementById('chk-'+cat).checked;
+  const label = document.getElementById('chk-label-'+cat);
+  const clrMap = { '흥미':'rgba(255,77,109,0.3)', '재미':'rgba(255,209,102,0.3)', '정보':'rgba(76,201,240,0.3)', '공감':'rgba(123,237,159,0.3)' };
+  const bgMap  = { '흥미':'rgba(255,77,109,0.12)', '재미':'rgba(255,209,102,0.12)', '정보':'rgba(76,201,240,0.12)', '공감':'rgba(123,237,159,0.12)' };
+  label.style.borderColor = checked ? clrMap[cat].replace('0.3','0.9') : clrMap[cat];
+  label.style.background  = checked ? bgMap[cat] : 'var(--surface2)';
+  label.style.opacity = checked ? '1' : '0.45';
 }
-updateWeightBar();
-
-// 저장된 Threads 토큰 불러오기
+// 초기화
 window.addEventListener('DOMContentLoaded', () => {
+  ['흥미','재미','정보','공감'].forEach(c => updateChkStyle(c));
   const saved = localStorage.getItem('threads_token');
   if (saved) document.getElementById('threadsToken').value = saved;
   loadKBList();
@@ -591,9 +573,8 @@ async function generateContent() {
   btn.disabled = true; btn.textContent = '생성 중...';
   showSkeleton();
 
-  const total = Object.values(weights).reduce((a,b)=>a+b,0)||1;
-  const pct = {};
-  ['흥미','재미','정보','공감'].forEach(c => pct[c] = Math.round((weights[c]/total)*100));
+  const selectedCats = getSelectedCats();
+  if (selectedCats.length === 0) { showToast('속성을 하나 이상 선택해주세요'); btn.disabled = false; btn.textContent = '✦ 콘텐츠 생성하기'; return; }
 
   const personaHint = document.getElementById('personaHint').value.trim();
   const toneHint    = document.getElementById('toneHint').value.trim();
@@ -611,7 +592,7 @@ async function generateContent() {
 
 ## 생성 조건
 - 타이틀 개수: ${titleCount}개
-- 속성 비중: 흥미 ${pct['흥미']}% / 재미 ${pct['재미']}% / 정보 ${pct['정보']}% / 공감 ${pct['공감']}%
+- 반드시 포함할 속성: ${selectedCats.join(', ')} (선택된 속성들이 타이틀에 골고루 반영되도록)
 ${personaHint ? `- 페르소나 힌트: ${personaHint}` : ''}
 ${toneHint ? `- 톤 힌트: ${toneHint}` : ''}
 
