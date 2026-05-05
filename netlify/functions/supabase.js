@@ -72,6 +72,46 @@ exports.handler = async (event) => {
       return { statusCode: 200, headers, body: JSON.stringify({ ok: true }) };
     }
 
+    if (action === 'saveFeedback') {
+      const res = await fetch(`${SUPA_URL}/rest/v1/feedback`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPA_KEY,
+          'Authorization': `Bearer ${SUPA_KEY}`,
+          'Prefer': 'return=representation'
+        },
+        body: JSON.stringify(data)
+      });
+      const result = await res.json();
+      return { statusCode: 200, headers, body: JSON.stringify(result) };
+    }
+
+    if (action === 'loadFeedback') {
+      const res = await fetch(`${SUPA_URL}/rest/v1/feedback?order=created_at.desc&limit=20`, {
+        headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}` }
+      });
+      const result = await res.json();
+      return { statusCode: 200, headers, body: JSON.stringify(result) };
+    }
+
+    if (action === 'loadContents') {
+      const res = await fetch(`${SUPA_URL}/rest/v1/contents?order=created_at.desc&limit=20`, {
+        headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}` }
+      });
+      const result = await res.json();
+      return { statusCode: 200, headers, body: JSON.stringify(result) };
+    }
+
+    if (action === 'deleteContent') {
+      const id = data?.id;
+      await fetch(`${SUPA_URL}/rest/v1/contents?id=eq.${id}`, {
+        method: 'DELETE',
+        headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}` }
+      });
+      return { statusCode: 200, headers, body: JSON.stringify({ ok: true }) };
+    }
+
     if (action === 'saveContext') {
       const res = await fetch(`${SUPA_URL}/rest/v1/context`, {
         method: 'POST',
