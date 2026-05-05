@@ -474,7 +474,7 @@ async function readFile(fileObj) {
       r.readAsDataURL(fileObj);
     } else if (name.endsWith('.docx') || name.endsWith('.xlsx') || name.endsWith('.xls') || name.endsWith('.pptx') || name.endsWith('.rtf') || name.endsWith('.csv') || name.endsWith('.json') || name.endsWith('.md') || name.endsWith('.txt')) {
       const r = new FileReader();
-      r.onload = e => resolve({ name:fileObj.name, type:'text', content:e.target.result.slice(0, 15000) });
+      r.onload = e => resolve({ name:fileObj.name, type:'text', content:e.target.result.slice(0, 50000) });
       r.readAsText(fileObj);
     } else {
       // 지원 안 되는 형식 — 파일명만 기록
@@ -520,7 +520,7 @@ async function learnFiles() {
 
   const msgContent = [];
   contents.filter(f => f.type === 'text').forEach(f => {
-    msgContent.push({ type:'text', text:`\n=== 파일: ${f.name} ===\n${f.content.slice(0,12000)}` });
+    msgContent.push({ type:'text', text:`\n=== 파일: ${f.name} ===\n${f.content.slice(0,40000)}` });
   });
   contents.filter(f => f.type === 'pdf').forEach(f => {
     msgContent.push({ type:'document', source:{ type:'base64', media_type:'application/pdf', data:f.data } });
