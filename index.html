@@ -532,7 +532,7 @@ async function learnFiles() {
   try {
     const res = await fetch("/.netlify/functions/claude", {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:1500, messages:[{ role:'user', content:msgContent }] })
+      body: JSON.stringify({ model:'claude-sonnet-4-5', max_tokens:1500, messages:[{ role:'user', content:msgContent }] })
     });
     const d = await res.json();
     if (d.error) throw new Error(d.error.message);
@@ -618,11 +618,11 @@ ${toneHint ? `톤: ${toneHint}` : ''}
     const [resMeta, resBody] = await Promise.all([
       fetch("/.netlify/functions/claude", {
         method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:1200, messages:[{ role:'user', content:promptMeta }] })
+        body: JSON.stringify({ model:'claude-sonnet-4-5', max_tokens:1200, messages:[{ role:'user', content:promptMeta }] })
       }),
       fetch("/.netlify/functions/claude", {
         method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:2000, messages:[{ role:'user', content:promptBody }] })
+        body: JSON.stringify({ model:'claude-sonnet-4-5', max_tokens:2000, messages:[{ role:'user', content:promptBody }] })
       })
     ]);
 
@@ -723,7 +723,7 @@ async function regenBody() {
   try {
     const res = await fetch("/.netlify/functions/claude", {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:2000,
+      body: JSON.stringify({ model:'claude-sonnet-4-5', max_tokens:2000,
         messages:[{ role:'user', content:`타이틀: ${t.text}
 속성: ${t.cats.join(', ')}
 학습 요약: ${kb.summary}
@@ -769,7 +769,7 @@ ${text}`;
   try {
     const res = await fetch("/.netlify/functions/claude", {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:1500,
+      body: JSON.stringify({ model:'claude-sonnet-4-5', max_tokens:1500,
         messages:[{ role:'user', content:prompt }] })
     });
     const d = await res.json();
