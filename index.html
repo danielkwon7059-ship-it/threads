@@ -626,7 +626,7 @@ async function generateContent() {
 
 ## 생성 조건
 - 타이틀 개수: ${titleCount}개
-- 반드시 포함할 속성: ${selectedCats.join(', ')} (선택된 속성들이 타이틀에 골고루 반영되도록)
+- 필수 포함 속성: ${selectedCats.join(', ')} → 생성되는 모든 타이틀에 이 속성들이 반드시 다 포함되어야 함. 단 타이틀마다 어떤 속성이 더 강하게 느껴지는지는 달라도 됨.
 ${personaHint ? `- 페르소나 힌트: ${personaHint}` : ''}
 ${toneHint ? `- 톤 힌트: ${toneHint}` : ''}
 
@@ -652,7 +652,7 @@ ${contextText}
 ${partsText || (kb.keyMessages||[]).map(m => `[메시지] ${m}`).join('\n')}
 
 ## 생성 조건
-포함할 속성: ${selectedCats.join(', ')}
+포함할 속성 (필수 — 전부 반영): ${selectedCats.join(', ')}
 ${personaHint ? `페르소나: ${personaHint}` : ''}
 ${toneHint ? `톤: ${toneHint}` : ''}
 
