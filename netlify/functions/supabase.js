@@ -71,6 +71,8 @@ exports.handler = async (event) => {
       ]);
       return { statusCode: 200, headers, body: JSON.stringify({ ok: true }) };
     }
+
+    if (action === 'saveContext') {
       const res = await fetch(`${SUPA_URL}/rest/v1/context`, {
         method: 'POST',
         headers: {
