@@ -687,7 +687,8 @@ function renderResults() {
           <div class="cb-acts">
             <button class="btn-sm" onclick="copyBlock('cb-body')">복사</button>
             <button class="btn-sm acc" onclick="regenBody()">선택 타이틀로 재각색</button>
-            <button class="btn-sm" onclick="splitThreads()">스레드로 변환</button>
+            <button class="btn-sm" onclick="splitThreads('v1')">스레드 V1 말투</button>
+            <button class="btn-sm" onclick="splitThreads('v2')">스레드 V2 길이</button>
             <button class="btn-sm" style="background:rgba(123,237,159,0.15);border-color:var(--clr-공감);color:var(--clr-공감)" onclick="publishThreads()">스레드 발행</button>
           </div>
         </div>
@@ -743,27 +744,31 @@ async function regenBody() {
 }
 
 // 스레드 재작성: Claude API로 본문을 스레드 말투로 변환
-async function splitThreads() {
+async function splitThreads(version) {
   const body = document.getElementById('cb-body');
   if (!body || !body.textContent.trim()) return;
   const text = body.textContent.trim();
 
-  body.innerHTML = '<span style="color:var(--text3)">스레드로 변환 중...</span>';
+  body.innerHTML = '<span style="color:var(--text3)">변환 중...</span>';
 
-  const prompt = `아래 본문을 스레드(Threads) 형식으로 재작성하세요.
+  const prompt = version === 'v1'
+    ? `아래 원문의 내용과 구조는 그대로 유지하고, 말투만 스레드 반말체로 바꾸세요.
+- 반말 사용 (~해, ~야, ~임, ~거야)
+- 문단 구분은 유지
+- 이모지 금지
+- JSON 배열만 반환: ["스레드1","스레드2",...]
 
-## 규칙
-- 각 스레드는 JSON 배열 항목 하나
-- 한 스레드당 150자 내외 (최대 200자)
-- 첫 스레드는 읽고 싶게 만드는 훅으로 시작
-- 짧게 끊어치는 문장, 여백으로 호흡 조절
-- 내용 성격(정보/공감/사례)에 맞는 자연스러운 톤 유지
-- 반말 사용 (예: ~해, ~야, ~임, ~거야)
-- 억지 반전 금지, 이모지 금지
-- 마지막 스레드는 여운이나 핵심 한 줄로 마무리
-- JSON 배열만 반환: ["스레드1","스레드2","스레드3"]
+원문:
+${text}`
+    : `아래 원문을 스레드 감성의 길이로 재작성하세요.
+- 한 스레드당 150자 내외
+- 짧게 끊어치는 문장, 여백으로 호흡
+- 반말 사용 (~해, ~야, ~임, ~거야)
+- 첫 스레드는 훅으로 시작
+- 이모지 금지
+- JSON 배열만 반환: ["스레드1","스레드2",...]
 
-## 원문
+원문:
 ${text}`;
 
   try {
@@ -780,12 +785,17 @@ ${text}`;
     body.innerHTML = threads.map((c,i) => `
       <div style="border:1px solid var(--border2);border-radius:8px;padding:14px;margin-bottom:10px;background:var(--surface2);">
         <div style="font-size:10px;color:var(--accent2);font-weight:700;margin-bottom:8px;letter-spacing:1px;">${i+1} / ${total}</div>
-        <div style="font-size:14px;line-height:1.9;color:var(--text2);white-space:pre-wrap;">${c}</div>
+        <div contenteditable="true" style="font-size:14px;line-height:1.9;color:var(--text2);white-space:pre-wrap;outline:none;border-bottom:1px dashed var(--border2);padding-bottom:6px;" oninput="updateCharCount(this)">${c}</div>
         <div style="font-size:11px;color:var(--text3);text-align:right;margin-top:6px;">${c.length}자</div>
       </div>`).join('');
   } catch(e) {
-    body.textContent = '스레드 변환 중 오류가 발생했습니다.';
+    body.textContent = '변환 중 오류가 발생했습니다.';
   }
+}
+
+function updateCharCount(el) {
+  const countEl = el.parentElement.querySelector('[style*="text-align:right"]');
+  if (countEl) countEl.textContent = el.textContent.length + '자';
 }
 
 
@@ -798,7 +808,7 @@ async function publishThreads() {
   if (cards.length === 0) { showToast('먼저 스레드로 변환해주세요'); return; }
 
   const threads = Array.from(cards).map(c => {
-    const textEl = c.querySelector('[style*="line-height"]');
+    const textEl = c.querySelector('[contenteditable]') || c.querySelector('[style*="line-height"]');
     return textEl ? textEl.textContent.trim() : '';
   }).filter(t => t.length > 0);
 
