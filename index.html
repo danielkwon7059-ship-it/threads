@@ -549,6 +549,8 @@ async function learnFiles() {
     // Supabase에 저장
     const kbName = files.map(f => f.name).join(', ').slice(0, 100);
     fetch('/.netlify/functions/supabase', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'saveKB', data: {
         name: kbName,
         topic: kb.topic || '',
         key_messages: JSON.stringify(kb.keyMessages || []),
@@ -947,6 +949,8 @@ async function scheduleThreads() {
 
   try {
     const res = await fetch('/.netlify/functions/supabase', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'saveScheduled', data: threads })
     });
     const data = await res.json();
     if (data.error) throw new Error(data.error.message);
