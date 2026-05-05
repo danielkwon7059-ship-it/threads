@@ -306,6 +306,12 @@ input[type=range].공감::-webkit-slider-thumb { -webkit-appearance:none; width:
     <div>
       <button class="btn-learn" id="learnBtn" onclick="learnFiles()" disabled>학습 시작하기</button>
     </div>
+    <div>
+      <div class="sec-title">저장된 학습 데이터</div>
+      <div id="kbList" style="display:flex;flex-direction:column;gap:6px;">
+        <div style="font-size:12px;color:var(--text3)">불러오는 중...</div>
+      </div>
+    </div>
     <div id="kbSec" style="display:none">
       <div class="sec-title">학습 현황</div>
       <div class="kb-card" id="kbCard"></div>
@@ -429,6 +435,7 @@ updateWeightBar();
 window.addEventListener('DOMContentLoaded', () => {
   const saved = localStorage.getItem('threads_token');
   if (saved) document.getElementById('threadsToken').value = saved;
+  loadKBList();
 });
 
 // ── COUNT ──
@@ -520,7 +527,7 @@ async function learnFiles() {
 
   const msgContent = [];
   contents.filter(f => f.type === 'text').forEach(f => {
-    msgContent.push({ type:'text', text:`\n=== 파일: ${f.name} ===\n${f.content.slice(0,20000)}` });
+    msgContent.push({ type:'text', text:`\n=== 파일: ${f.name} ===\n${f.content.slice(0,8000)}` });
   });
   contents.filter(f => f.type === 'pdf').forEach(f => {
     msgContent.push({ type:'document', source:{ type:'base64', media_type:'application/pdf', data:f.data } });
@@ -538,6 +545,23 @@ async function learnFiles() {
     if (d.error) throw new Error(d.error.message);
     kb = safeParseJSON(d.content[0].text);
     kb._count = files.filter(f => f.status === 'done').length;
+
+    // Supabase에 저장
+    const kbName = files.map(f => f.name).join(', ').slice(0, 100);
+    fetch('/.netlify/functions/claude', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'saveKB', data: {
+        name: kbName,
+        topic: kb.topic || '',
+        key_messages: JSON.stringify(kb.keyMessages || []),
+        tone: kb.tone || '',
+        keywords: JSON.stringify(kb.keywords || []),
+        audience: kb.audience || '',
+        content_type: kb.contentType || '',
+        summary: kb.summary || ''
+      }})
+    }).then(() => loadKBList());
+
     renderKB();
     document.getElementById('genBtn').disabled = false;
     setStep(2);
@@ -622,7 +646,7 @@ ${toneHint ? `톤: ${toneHint}` : ''}
     const dMeta = await resMeta.json();
     if (dMeta.error) throw new Error(dMeta.error.message);
 
-    await new Promise(r => setTimeout(r, 3000)); // 3초 대기
+    await new Promise(r => setTimeout(r, 5000)); // 5초 대기
 
     const resBody = await fetch("/.netlify/functions/claude", {
       method:'POST', headers:{'Content-Type':'application/json'},
@@ -690,7 +714,8 @@ function renderResults() {
             <button class="btn-sm acc" onclick="regenBody()">선택 타이틀로 재각색</button>
             <button class="btn-sm" onclick="splitThreads('v1')">스레드 V1 말투</button>
             <button class="btn-sm" onclick="splitThreads('v2')">스레드 V2 길이</button>
-            <button class="btn-sm" style="background:rgba(123,237,159,0.15);border-color:var(--clr-공감);color:var(--clr-공감)" onclick="publishThreads()">스레드 발행</button>
+            <button class="btn-sm" style="background:rgba(123,237,159,0.15);border-color:var(--clr-공감);color:var(--clr-공감)" onclick="publishThreads()">즉시 발행</button>
+            <button class="btn-sm" style="background:rgba(76,201,240,0.15);border-color:var(--clr-정보);color:var(--clr-정보)" onclick="scheduleThreads()">예약 발행</button>
           </div>
         </div>
         <div class="cb-body" id="cb-body">${r.body}</div>
@@ -860,6 +885,73 @@ async function publishThreads() {
   } catch(e) {
     console.error(e);
     showToast('발행 오류: ' + e.message);
+  }
+}
+
+// ── SUPABASE: KB 목록 불러오기 ──
+async function loadKBList() {
+  try {
+    const res = await fetch('/.netlify/functions/claude', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'loadKB' })
+    });
+    const data = await res.json();
+    const el = document.getElementById('kbList');
+    if (!data || data.length === 0) {
+      el.innerHTML = '<div style="font-size:12px;color:var(--text3)">저장된 학습 없음</div>';
+      return;
+    }
+    el.innerHTML = data.map(k => `
+      <div onclick="loadKB(${JSON.stringify(k).replace(/"/g,'&quot;')})"
+        style="padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;cursor:pointer;transition:all 0.15s;"
+        onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+        <div style="font-size:12px;font-weight:600;color:var(--text2)">${k.name || '이름없음'}</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:2px">${new Date(k.created_at).toLocaleDateString('ko-KR')}</div>
+      </div>`).join('');
+  } catch(e) {
+    document.getElementById('kbList').innerHTML = '<div style="font-size:12px;color:var(--text3)">불러오기 실패</div>';
+  }
+}
+
+function loadKB(k) {
+  kb = {
+    topic: k.topic, keyMessages: JSON.parse(k.key_messages||'[]'),
+    tone: k.tone, keywords: JSON.parse(k.keywords||'[]'),
+    audience: k.audience, contentType: k.content_type,
+    summary: k.summary, _count: 1
+  };
+  renderKB();
+  document.getElementById('genBtn').disabled = false;
+  setStep(2);
+  showToast('✓ 학습 데이터 불러왔어요');
+}
+
+// ── 예약 발행 ──
+async function scheduleThreads() {
+  const token = localStorage.getItem('threads_token') || document.getElementById('threadsToken').value.trim();
+  if (!token) { showToast('먼저 Threads 액세스 토큰을 입력해주세요'); return; }
+
+  const cards = document.querySelectorAll('#cb-body [style*="border-radius:8px"]');
+  if (cards.length === 0) { showToast('먼저 스레드로 변환해주세요'); return; }
+
+  const scheduledAt = prompt('발행 시간 입력 (예: 2026-05-06T09:00)');
+  if (!scheduledAt) return;
+
+  const threads = Array.from(cards).map((c, i) => {
+    const textEl = c.querySelector('[contenteditable]') || c.querySelector('[style*="line-height"]');
+    return { text: textEl ? textEl.textContent.trim() : '', order: i, scheduledAt, accessToken: token };
+  }).filter(t => t.text.length > 0);
+
+  try {
+    const res = await fetch('/.netlify/functions/claude', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'saveScheduled', data: threads })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message);
+    showToast(`${threads.length}개 스레드 예약 완료!`);
+  } catch(e) {
+    showToast('예약 저장 실패: ' + e.message);
   }
 }
 
