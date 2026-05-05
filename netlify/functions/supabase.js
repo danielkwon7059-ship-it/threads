@@ -62,7 +62,15 @@ exports.handler = async (event) => {
       return { statusCode: 200, headers, body: JSON.stringify(result) };
     }
 
-    if (action === 'saveContext') {
+    if (action === 'deleteKB') {
+      const id = data?.id;
+      await Promise.all([
+        fetch(`${SUPA_URL}/rest/v1/knowledge_base?id=eq.${id}`, { method:'DELETE', headers:{ 'apikey':SUPA_KEY, 'Authorization':`Bearer ${SUPA_KEY}` } }),
+        fetch(`${SUPA_URL}/rest/v1/context?kb_id=eq.${id}`, { method:'DELETE', headers:{ 'apikey':SUPA_KEY, 'Authorization':`Bearer ${SUPA_KEY}` } }),
+        fetch(`${SUPA_URL}/rest/v1/parts?kb_id=eq.${id}`, { method:'DELETE', headers:{ 'apikey':SUPA_KEY, 'Authorization':`Bearer ${SUPA_KEY}` } })
+      ]);
+      return { statusCode: 200, headers, body: JSON.stringify({ ok: true }) };
+    }
       const res = await fetch(`${SUPA_URL}/rest/v1/context`, {
         method: 'POST',
         headers: {
