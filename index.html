@@ -789,7 +789,7 @@ ${text}`;
 }
 
 
-// 스레드 자동 발행: 변환된 스레드 카드들을 순서대로 Threads API로 발행
+// 스레드 자동 발행: Netlify Function 프록시를 통해 Threads API 호출
 async function publishThreads() {
   const token = localStorage.getItem('threads_token') || document.getElementById('threadsToken').value.trim();
   if (!token) { showToast('먼저 Threads 액세스 토큰을 입력해주세요'); return; }
@@ -804,11 +804,24 @@ async function publishThreads() {
 
   if (threads.length === 0) { showToast('발행할 내용이 없어요'); return; }
 
+  const proxy = async (url, body) => {
+    const res = await fetch('/.netlify/functions/threads', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url, method: 'POST', body })
+    });
+    return res.json();
+  };
+
   showToast(`총 ${threads.length}개 스레드 발행 시작...`);
 
   try {
     // 1. 유저 ID 가져오기
-    const meRes = await fetch(`https://graph.threads.net/v1.0/me?fields=id&access_token=${token}`);
+    const meRes = await fetch(`/.netlify/functions/threads`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: `https://graph.threads.net/v1.0/me?fields=id&access_token=${token}`, method: 'GET' })
+    });
     const me = await meRes.json();
     if (me.error) throw new Error(me.error.message);
     const userId = me.id;
@@ -817,33 +830,22 @@ async function publishThreads() {
 
     for (let i = 0; i < threads.length; i++) {
       // 2. 미디어 컨테이너 생성
-      const body = { media_type: 'TEXT', text: threads[i], access_token: token };
-      if (replyToId) body.reply_to_id = replyToId;
+      const createBody = { media_type: 'TEXT', text: threads[i], access_token: token };
+      if (replyToId) createBody.reply_to_id = replyToId;
 
-      const createRes = await fetch(`https://graph.threads.net/v1.0/${userId}/threads`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-      });
-      const created = await createRes.json();
+      const created = await proxy(`https://graph.threads.net/v1.0/${userId}/threads`, createBody);
       if (created.error) throw new Error(created.error.message);
 
       // 3. 게시
-      const pubRes = await fetch(`https://graph.threads.net/v1.0/${userId}/threads_publish`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ creation_id: created.id, access_token: token })
-      });
-      const published = await pubRes.json();
+      const published = await proxy(`https://graph.threads.net/v1.0/${userId}/threads_publish`, { creation_id: created.id, access_token: token });
       if (published.error) throw new Error(published.error.message);
 
       replyToId = published.id;
       showToast(`${i+1} / ${threads.length} 발행 완료`);
 
-      // API 레이트 리밋 방지
       if (i < threads.length - 1) await new Promise(r => setTimeout(r, 1000));
     }
-    showToast(`모든 스레드 발행 완료!`);
+    showToast('모든 스레드 발행 완료!');
   } catch(e) {
     console.error(e);
     showToast('발행 오류: ' + e.message);
