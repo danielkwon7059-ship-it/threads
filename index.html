@@ -665,7 +665,7 @@ ${toneHint ? `톤: ${toneHint}` : ''}
 
 ## 작성 규칙
 - 맥락(고정)은 반드시 유지하면서, 소재 부품에서 필요한 것만 골라 조합
-- 서순 준수: 훅 → 문제제기 → 공감 → 해결/정보 → 마무리
+- 맥락 일관성 유지: 타이틀 주제 하나로 처음부터 끝까지. 구성 방식은 자유롭게
 - 사연/수치/표현은 각색 가능, 핵심 맥락은 유지
 - 이모지 사용 금지
 - 5-7문단, 텍스트만 반환 (JSON 아님)`;
@@ -765,7 +765,7 @@ function renderResults() {
             <button class="btn-sm" onclick="addFeedbackToParts()" style="background:rgba(123,237,159,0.15);border-color:var(--clr-공감);color:var(--clr-공감)">창고에 추가</button>
           </div>
         </div>
-        <div class="cb-body" id="cb-feedback" style="display:flex;flex-direction:column;gap:12px;"></div>
+        <div class="cb-body" id="cb-feedback" style="display:flex;flex-direction:column;gap:6px;"></div>
       </div>
       <div class="cb">
         <div class="cb-head">
@@ -813,8 +813,8 @@ ${contextText}
 ${partsText || (kb.keyMessages||[]).map(m => `[메시지] ${m}`).join('\n')}
 
 ## 작성 규칙
-- 타이틀의 주제 하나만 처음부터 끝까지 일관되게 다룰 것. 다른 주제 섞지 말 것.
-- 서순 준수: 훅 → 문제제기 → 공감 → 해결/정보 → 마무리
+- 타이틀 주제 하나만 처음부터 끝까지 일관된 맥락으로 다룰 것. 다른 주제 섞지 말 것.
+- 구성 방식은 자유롭게 (서순 강제 없음)
 - 맥락(고정)은 유지, 소재 부품은 타이틀에 맞는 것만 선택
 - 사연/표현은 각색 가능, 핵심 지식은 유지
 - 이모지 사용 금지
@@ -909,7 +909,7 @@ const DIRECTORS = [
   { name: '미디어 마케팅 전문가', role: '바이럴 가능성, 플랫폼 적합성, 타겟 도달력 관점에서 평가' },
   { name: '카피라이터', role: '훅의 강도, 언어의 설득력, 리듬감과 문장 흡입력 관점에서 평가' },
   { name: '소비자 심리 전문가', role: '독자의 감정 반응, 공감 유발, 행동 유도 심리 관점에서 평가' },
-  { name: '소설가', role: '글의 맥락 일관성, 스토리 흐름, 처음부터 끝까지 하나의 이야기로 연결되는지 관점에서 평가' },
+  { name: '편집장', role: '글의 맥락 일관성, 논리 흐름, 처음부터 끝까지 하나의 이야기로 자연스럽게 연결되는지, 군더더기는 없는지 관점에서 평가' },
   { name: '실제 타겟 독자', role: '이 글을 보는 일반인 입장에서 솔직하게 평가' }
 ];
 
@@ -972,14 +972,14 @@ async function runDirectorReview() {
         <button onclick="rewriteWithFeedback()" style="margin-left:auto;font-size:11px;padding:4px 12px;border-radius:6px;background:rgba(165,148,255,0.15);border:1px solid var(--accent2);color:var(--accent2);cursor:pointer;">체크된 피드백으로 재각색</button>
       </div>
       ${reviews.map((r,i) => `
-        <div style="padding:10px;background:var(--surface);border:1px solid var(--border);border-radius:8px;">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+        <div style="padding:8px 10px;background:var(--surface);border:1px solid var(--border);border-radius:6px;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
             <input type="checkbox" id="fb-chk-${i}" checked style="cursor:pointer;accent-color:var(--accent)">
             <span style="font-size:12px;font-weight:700;color:${colorMap[r.name]||'var(--text2)'};flex:1">${r.name}</span>
             <span style="font-size:13px;font-weight:700;font-family:Gmarket Sans,sans-serif;color:var(--text)">${r.score}</span>
           </div>
-          <div style="font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:5px;">${r.comment}</div>
-          <div style="font-size:11px;color:var(--accent2);background:rgba(124,106,255,0.08);padding:5px 8px;border-radius:5px;">${r.improvement}</div>
+          <div style="font-size:12px;color:var(--text2);line-height:1.5;margin-bottom:4px;">${r.comment}</div>
+          <div style="font-size:11px;color:var(--accent2);background:rgba(124,106,255,0.08);padding:4px 8px;border-radius:4px;">${r.improvement}</div>
         </div>`).join('')}`;
   } catch(e) {
     feedbackEl.innerHTML = '<span style="color:var(--text3)">평가 중 오류가 발생했습니다.</span>';
@@ -990,9 +990,9 @@ async function rewriteWithFeedback() {
   const bodyEl = document.getElementById('cb-body');
   if (!bodyEl) return;
   const bodyText = bodyEl.innerText.trim();
+  if (!bodyText || bodyText === '본문 생성 중...') { showToast('본문이 없어요'); return; }
   const titleText = result?.titles?.[selTitleIdx]?.text || '';
 
-  // 체크된 피드백만 수집
   const selected = lastFeedbacks.filter((f, i) => {
     const chk = document.getElementById(`fb-chk-${i}`);
     return chk && chk.checked;
@@ -1018,8 +1018,8 @@ ${bodyText}
 ${feedbackText}
 
 작성 규칙:
-- 타이틀 주제 하나만 처음부터 끝까지 일관되게
-- 서순 준수: 훅 → 문제제기 → 공감 → 해결/정보 → 마무리
+- 타이틀 주제 하나만 처음부터 끝까지 일관된 맥락으로
+- 구성 방식은 자유롭게 (서순 강제 없음)
 - 이모지 사용 금지
 - 텍스트만 반환` }] })
     });
