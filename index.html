@@ -424,7 +424,7 @@ window.addEventListener('DOMContentLoaded', () => {
   const saved = localStorage.getItem('threads_token');
   if (saved) document.getElementById('threadsToken').value = saved;
   loadKBList();
-  renderSavedTitles();
+  loadSavedContents();
 });
 
 // ── COUNT ──
@@ -721,7 +721,7 @@ function renderResults() {
       </div>
       <div style="display:flex;gap:4px;margin-top:6px;">
         <button class="btn-sm acc" style="font-size:10px;padding:3px 8px;" onclick="event.stopPropagation();generateBodyForTitle(${i})">본문 생성</button>
-        <button class="btn-sm" style="font-size:10px;padding:3px 8px;" onclick="event.stopPropagation();saveTitle('${t.text.replace(/'/g,"\\'")}')">저장</button>
+        <button class="btn-sm" style="font-size:10px;padding:3px 8px;" onclick="event.stopPropagation();saveContent('${t.text.replace(/'/g,"\\'")}')">저장</button>
       </div>
       <div class="tc-sel-dot">✓</div>
     </div>`).join('');
@@ -753,9 +753,19 @@ function renderResults() {
             <button class="btn-sm" onclick="splitThreads('v2')">스레드 V2 길이</button>
             <button class="btn-sm" style="background:rgba(123,237,159,0.15);border-color:var(--clr-공감);color:var(--clr-공감)" onclick="publishThreads()">즉시 발행</button>
             <button class="btn-sm" style="background:rgba(76,201,240,0.15);border-color:var(--clr-정보);color:var(--clr-정보)" onclick="scheduleThreads()">예약 발행</button>
+            <button class="btn-sm" style="background:rgba(165,148,255,0.15);border-color:var(--accent2);color:var(--accent2)" onclick="runDirectorReview()">감독 평가</button>
           </div>
         </div>
         <div class="cb-body" id="cb-body">${r.body}</div>
+      </div>
+      <div class="cb" id="feedback-block" style="display:none;">
+        <div class="cb-head">
+          <span class="cb-lbl">감독 평가</span>
+          <div class="cb-acts">
+            <button class="btn-sm" onclick="addFeedbackToParts()" style="background:rgba(123,237,159,0.15);border-color:var(--clr-공감);color:var(--clr-공감)">창고에 추가</button>
+          </div>
+        </div>
+        <div class="cb-body" id="cb-feedback" style="display:flex;flex-direction:column;gap:12px;"></div>
       </div>
       <div class="cb">
         <div class="cb-head">
@@ -828,28 +838,173 @@ async function regenBody() {
 }
 
 // 타이틀 저장
-let savedTitles = JSON.parse(localStorage.getItem('saved_titles')||'[]');
-function saveTitle(text) {
-  if (savedTitles.includes(text)) { showToast('이미 저장된 타이틀이에요'); return; }
-  savedTitles.push(text);
-  localStorage.setItem('saved_titles', JSON.stringify(savedTitles));
-  showToast('저장됐어요');
-  renderSavedTitles();
+// 콘텐츠 저장 (타이틀 + 본문 + 페르소나)
+async function saveContent(titleText) {
+  const bodyEl = document.getElementById('cb-body');
+  const personaEl = document.getElementById('cb-persona');
+  const bodyText = bodyEl ? bodyEl.innerText.trim() : '';
+
+  if (!bodyText || bodyText === '본문 생성 중...' || bodyText === '오류가 발생했습니다.') {
+    showToast('먼저 본문을 생성해주세요');
+    return;
+  }
+
+  try {
+    const res = await fetch('/.netlify/functions/supabase', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'saveContent', data: {
+        titles: titleText,
+        body: bodyText,
+        persona: personaEl ? personaEl.innerText.trim() : '',
+        kb_id: kb?._id || null
+      }})
+    });
+    const d = await res.json();
+    if (d.error) throw new Error(d.error.message);
+    showToast('저장됐어요');
+    loadSavedContents();
+  } catch(e) {
+    showToast('저장 실패: ' + e.message);
+  }
 }
-function renderSavedTitles() {
-  const el = document.getElementById('savedTitlesList');
-  if (!el) return;
-  if (savedTitles.length === 0) { el.innerHTML = '<div style="font-size:12px;color:var(--text3)">저장된 타이틀 없음</div>'; return; }
-  el.innerHTML = savedTitles.map((t,i) => `
-    <div style="display:flex;align-items:center;gap:6px;padding:6px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;">
-      <span style="flex:1;font-size:12px;color:var(--text2)">${t}</span>
-      <button onclick="deleteSavedTitle(${i})" style="font-size:11px;padding:1px 6px;background:transparent;border:1px solid var(--border2);color:var(--clr-흥미);border-radius:4px;cursor:pointer;">×</button>
-    </div>`).join('');
+
+async function loadSavedContents() {
+  try {
+    const res = await fetch('/.netlify/functions/supabase', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'loadContents' })
+    });
+    const data = await res.json();
+    const el = document.getElementById('savedTitlesList');
+    if (!el) return;
+    if (!data || data.length === 0) {
+      el.innerHTML = '<div style="font-size:12px;color:var(--text3)">저장된 콘텐츠 없음</div>';
+      return;
+    }
+    el.innerHTML = data.map(c => `
+      <div style="padding:8px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">
+          <span style="flex:1;font-size:12px;color:var(--text2);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${c.titles || '제목없음'}</span>
+          <button onclick="deleteContent(${c.id})" style="font-size:11px;padding:1px 6px;background:transparent;border:1px solid var(--border2);color:var(--clr-흥미);border-radius:4px;cursor:pointer;flex-shrink:0;">×</button>
+        </div>
+        <div style="font-size:11px;color:var(--text3);margin-top:2px">${new Date(c.created_at).toLocaleDateString('ko-KR')}</div>
+      </div>`).join('');
+  } catch(e) {}
 }
-function deleteSavedTitle(i) {
-  savedTitles.splice(i,1);
-  localStorage.setItem('saved_titles', JSON.stringify(savedTitles));
-  renderSavedTitles();
+
+async function deleteContent(id) {
+  if (!confirm('삭제할까요?')) return;
+  try {
+    await fetch('/.netlify/functions/supabase', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'deleteContent', data: { id } })
+    });
+    showToast('삭제됐어요');
+    loadSavedContents();
+  } catch(e) { showToast('삭제 실패'); }
+}
+
+// ── 감독 평가 ──
+const DIRECTORS = [
+  { name: '미디어 마케팅 전문가', role: '바이럴 가능성, 플랫폼 적합성, 타겟 도달력 관점에서 평가' },
+  { name: '카피라이터', role: '훅의 강도, 언어의 설득력, 리듬감과 문장 흡입력 관점에서 평가' },
+  { name: '소비자 심리 전문가', role: '독자의 감정 반응, 공감 유발, 행동 유도 심리 관점에서 평가' },
+  { name: '실제 타겟 독자', role: '이 글을 보는 일반인 입장에서 솔직하게 평가' }
+];
+
+let lastFeedbacks = [];
+
+async function runDirectorReview() {
+  const bodyEl = document.getElementById('cb-body');
+  if (!bodyEl || !bodyEl.innerText.trim()) { showToast('먼저 본문을 생성해주세요'); return; }
+  const bodyText = bodyEl.innerText.trim();
+  const titleText = result?.titles?.[selTitleIdx]?.text || '';
+
+  const feedbackBlock = document.getElementById('feedback-block');
+  const feedbackEl = document.getElementById('cb-feedback');
+  feedbackBlock.style.display = 'block';
+  feedbackEl.innerHTML = '<span style="color:var(--text3)">4명의 감독이 평가 중...</span>';
+
+  try {
+    // 4명 병렬 평가
+    const reviews = await Promise.all(DIRECTORS.map(d =>
+      fetch('/.netlify/functions/claude', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: 'claude-sonnet-4-5', max_tokens: 600,
+          messages: [{ role: 'user', content:
+            `당신은 ${d.name}입니다. ${d.role}.
+
+타이틀: ${titleText}
+본문: ${bodyText}
+
+다음 JSON만 반환 (다른 텍스트 없이):
+{"score":0-100,"comment":"평가 2-3문장","improvement":"개선 제안 1-2문장"}` }] })
+      }).then(r => r.json()).then(d2 => {
+        const raw = d2.content?.[0]?.text || '{}';
+        const start = raw.indexOf('{'); const end = raw.lastIndexOf('}');
+        return { ...DIRECTORS.find(x => x.name === d.name), ...JSON.parse(raw.slice(start, end+1)) };
+      }).catch(() => ({ ...d, score: 0, comment: '평가 실패', improvement: '' }))
+    ));
+
+    lastFeedbacks = reviews;
+
+    // Supabase 저장
+    fetch('/.netlify/functions/supabase', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'saveFeedback', data: reviews.map(r => ({
+        content_text: bodyText.slice(0, 500),
+        persona: r.name,
+        score: r.score,
+        comment: r.comment,
+        improvement: r.improvement
+      }))})
+    });
+
+    const avgScore = Math.round(reviews.reduce((a,b) => a + (b.score||0), 0) / reviews.length);
+    const colorMap = { '미디어 마케팅 전문가': 'var(--clr-정보)', '카피라이터': 'var(--clr-재미)', '소비자 심리 전문가': 'var(--clr-공감)', '실제 타겟 독자': 'var(--clr-흥미)' };
+
+    feedbackEl.innerHTML = `
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);margin-bottom:8px;">
+        <span style="font-size:13px;color:var(--text3)">평균 점수</span>
+        <span style="font-size:22px;font-weight:700;font-family:Gmarket Sans,sans-serif;color:${avgScore>=70?'var(--clr-공감)':avgScore>=50?'var(--clr-재미)':'var(--clr-흥미)'}">${avgScore}</span>
+        <span style="font-size:13px;color:var(--text3)">/ 100</span>
+      </div>
+      ${reviews.map(r => `
+        <div style="padding:12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+            <span style="font-size:12px;font-weight:700;color:${colorMap[r.name]||'var(--text2)'}">${r.name}</span>
+            <span style="font-size:14px;font-weight:700;font-family:Gmarket Sans,sans-serif;color:var(--text)">${r.score}</span>
+          </div>
+          <div style="font-size:13px;color:var(--text2);line-height:1.7;margin-bottom:6px;">${r.comment}</div>
+          <div style="font-size:12px;color:var(--accent2);background:rgba(124,106,255,0.08);padding:6px 10px;border-radius:6px;">💡 ${r.improvement}</div>
+        </div>`).join('')}`;
+  } catch(e) {
+    feedbackEl.innerHTML = '<span style="color:var(--text3)">평가 중 오류가 발생했습니다.</span>';
+  }
+}
+
+async function addFeedbackToParts() {
+  if (!lastFeedbacks.length) { showToast('먼저 감독 평가를 실행해주세요'); return; }
+  if (!kb) { showToast('학습 데이터가 없어요'); return; }
+
+  const improvements = lastFeedbacks
+    .filter(f => f.improvement)
+    .map(f => ({ type: '개선제안', content: `[${f.name}] ${f.improvement}` }));
+
+  if (!improvements.length) { showToast('추가할 개선 제안이 없어요'); return; }
+
+  const kbId = kb._id;
+  if (!kbId) { showToast('창고 ID를 찾을 수 없어요'); return; }
+
+  try {
+    await fetch('/.netlify/functions/supabase', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'saveParts', data: improvements.map(p => ({ ...p, kb_id: kbId })) })
+    });
+    showToast(`${improvements.length}개 개선 제안을 창고에 추가했어요`);
+  } catch(e) {
+    showToast('추가 실패: ' + e.message);
+  }
 }
 
 // 스레드 재작성: Claude API로 본문을 스레드 말투로 변환
@@ -1081,7 +1236,6 @@ async function loadKBList() {
 }
 
 async function loadAllKB(kbList) {
-  // 전체 KB의 parts/context를 통합해서 kb 객체 구성
   const allParts = [];
   const allMessages = [];
   const allKeywords = [];
@@ -1090,22 +1244,24 @@ async function loadAllKB(kbList) {
   let audience = '';
   let tone = '';
 
-  for (const k of kbList) {
+  // 모든 KB의 parts를 병렬로 불러오기
+  const partsResults = await Promise.all(kbList.map(k =>
+    fetch('/.netlify/functions/supabase', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'loadParts', data: { kb_id: k.id } })
+    }).then(r => r.json()).catch(() => ({ context: '', parts: [] }))
+  ));
+
+  kbList.forEach((k, i) => {
     if (k.topic) topic = k.topic;
     if (k.audience) audience = k.audience;
     if (k.tone) tone = k.tone;
-    try {
-      const pRes = await fetch('/.netlify/functions/supabase', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'loadParts', data: { kb_id: k.id } })
-      });
-      const d = await pRes.json();
-      if (d.context) contextText += (contextText ? '\n' : '') + d.context;
-      if (d.parts) allParts.push(...d.parts);
-    } catch(e) {}
+    const d = partsResults[i];
+    if (d.context) contextText += (contextText ? '\n' : '') + d.context;
+    if (d.parts) allParts.push(...d.parts);
     try { allMessages.push(...JSON.parse(k.key_messages||'[]')); } catch(e) {}
     try { allKeywords.push(...JSON.parse(k.keywords||'[]')); } catch(e) {}
-  }
+  });
 
   kb = {
     topic, audience, tone,
