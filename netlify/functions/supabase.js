@@ -1,0 +1,70 @@
+exports.handler = async (event) => {
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 200,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS'
+      },
+      body: ''
+    };
+  }
+  if (event.httpMethod !== 'POST') {
+    return { statusCode: 405, body: 'Method Not Allowed' };
+  }
+
+  const headers = { 'Access-Control-Allow-Origin': '*' };
+  const SUPA_URL = process.env.SUPABASE_URL;
+  const SUPA_KEY = process.env.SUPABASE_KEY;
+
+  try {
+    const { action, data } = JSON.parse(event.body);
+
+    if (action === 'saveKB') {
+      const res = await fetch(`${SUPA_URL}/rest/v1/knowledge_base`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPA_KEY,
+          'Authorization': `Bearer ${SUPA_KEY}`,
+          'Prefer': 'return=representation'
+        },
+        body: JSON.stringify(data)
+      });
+      const result = await res.json();
+      return { statusCode: 200, headers, body: JSON.stringify(result) };
+    }
+
+    if (action === 'loadKB') {
+      const res = await fetch(`${SUPA_URL}/rest/v1/knowledge_base?order=created_at.desc&limit=10`, {
+        headers: {
+          'apikey': SUPA_KEY,
+          'Authorization': `Bearer ${SUPA_KEY}`
+        }
+      });
+      const result = await res.json();
+      return { statusCode: 200, headers, body: JSON.stringify(result) };
+    }
+
+    if (action === 'saveScheduled') {
+      const res = await fetch(`${SUPA_URL}/rest/v1/scheduled_posts`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPA_KEY,
+          'Authorization': `Bearer ${SUPA_KEY}`,
+          'Prefer': 'return=representation'
+        },
+        body: JSON.stringify(data)
+      });
+      const result = await res.json();
+      return { statusCode: 200, headers, body: JSON.stringify(result) };
+    }
+
+    return { statusCode: 400, headers, body: JSON.stringify({ error: 'Unknown action' }) };
+
+  } catch (e) {
+    return { statusCode: 500, headers, body: JSON.stringify({ error: e.message }) };
+  }
+};
