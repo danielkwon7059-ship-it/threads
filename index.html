@@ -502,26 +502,23 @@ function safeParseJSON(raw) {
 // 참고 파일: fileInput으로 업로드된 파일들 (텍스트/PDF 모두 처리)
 async function learnFiles() {
   const btn = document.getElementById('learnBtn');
-  btn.disabled = true; btn.textContent = '분석 중...';
+  btn.disabled = true;
 
-  const contents = [];
   for (let i = 0; i < files.length; i++) {
     files[i].status = 'loading'; renderFileList();
-    try {
-      contents.push(await readFile(files[i].file));
-      files[i].status = 'done';
-    } catch(e) { files[i].status = 'error'; }
-    renderFileList();
-  }
+    btn.textContent = `학습 중 (${i+1}/${files.length})...`;
 
-  const msgContent = [];
-  contents.filter(f => f.type === 'text').forEach(f => {
-    msgContent.push({ type:'text', text:`\n=== 파일: ${f.name} ===\n${f.content.slice(0,8000)}` });
-  });
-  contents.filter(f => f.type === 'pdf').forEach(f => {
-    msgContent.push({ type:'document', source:{ type:'base64', media_type:'application/pdf', data:f.data } });
-  });
-  msgContent.push({ type:'text', text:`위 파일들을 분석하세요. 반드시 아래 형식의 JSON 객체만 반환하세요. 마크다운 코드블록 금지. 설명 금지. JSON 값 안에 큰따옴표(") 사용 금지.
+    try {
+      const content = await readFile(files[i].file);
+      files[i].status = 'done'; renderFileList();
+
+      const msgContent = [];
+      if (content.type === 'text') {
+        msgContent.push({ type:'text', text:`=== 파일: ${content.name} ===\n${content.content.slice(0,4000)}` });
+      } else if (content.type === 'pdf') {
+        msgContent.push({ type:'document', source:{ type:'base64', media_type:'application/pdf', data:content.data } });
+      }
+      msgContent.push({ type:'text', text:`위 파일을 분석하세요. 반드시 아래 형식의 JSON 객체만 반환하세요. 마크다운 코드블록 금지. 설명 금지. JSON 값 안에 큰따옴표(") 사용 금지.
 
 {
   "topic":"핵심 주제",
@@ -531,9 +528,9 @@ async function learnFiles() {
   "audience":"타겟 독자",
   "contentType":"콘텐츠 유형",
   "summary":"전체 요약 2-3문장",
-  "context":"이 콘텐츠의 핵심 맥락과 지식. 어떤 표현으로 콘텐츠를 만들어도 반드시 지켜야 할 본질적 내용. 3-5문장.",
+  "context":"이 콘텐츠의 핵심 맥락과 지식. 3-5문장.",
   "parts":[
-    {"type":"사연","content":"실제 사연이나 스토리 한 가지"},
+    {"type":"사연","content":"실제 사연이나 스토리"},
     {"type":"수치","content":"구체적 수치나 통계"},
     {"type":"표현","content":"인상적인 표현이나 문구"},
     {"type":"사례","content":"구체적 사례"},
@@ -541,58 +538,64 @@ async function learnFiles() {
   ]
 }` });
 
-  try {
-    const res = await fetch("/.netlify/functions/claude", {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ model:'claude-sonnet-4-5', max_tokens:1500, messages:[{ role:'user', content:msgContent }] })
-    });
-    const d = await res.json();
-    if (d.error) throw new Error(d.error.message);
-    kb = safeParseJSON(d.content[0].text);
-    kb._count = files.filter(f => f.status === 'done').length;
+      const res = await fetch("/.netlify/functions/claude", {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ model:'claude-sonnet-4-5', max_tokens:1000, messages:[{ role:'user', content:msgContent }] })
+      });
+      const d = await res.json();
+      if (d.error) throw new Error(d.error.message);
+      const parsed = safeParseJSON(d.content[0].text);
+      parsed._count = 1;
 
-    // Supabase에 저장 (KB + context + parts)
-    const kbName = files.map(f => f.name).join(', ').slice(0, 100);
-    fetch('/.netlify/functions/supabase', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'saveKB', data: {
-        name: kbName,
-        topic: kb.topic || '',
-        key_messages: JSON.stringify(kb.keyMessages || []),
-        tone: kb.tone || '',
-        keywords: JSON.stringify(kb.keywords || []),
-        audience: kb.audience || '',
-        content_type: kb.contentType || '',
-        summary: kb.summary || ''
-      }})
-    }).then(r => r.json()).then(saved => {
-      const kbId = Array.isArray(saved) ? saved[0]?.id : saved?.id;
-      if (!kbId) return;
-      // context 저장
-      if (kb.context) {
-        fetch('/.netlify/functions/supabase', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'saveContext', data: { kb_id: kbId, content: kb.context } })
-        });
-      }
-      // parts 저장
-      if (kb.parts && kb.parts.length > 0) {
-        fetch('/.netlify/functions/supabase', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'saveParts', data: kb.parts.map(p => ({ kb_id: kbId, type: p.type, content: p.content })) })
-        });
-      }
-      loadKBList();
-    });
+      // Supabase에 저장
+      const kbName = content.name.slice(0, 100);
+      fetch('/.netlify/functions/supabase', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'saveKB', data: {
+          name: kbName,
+          topic: parsed.topic || '',
+          key_messages: JSON.stringify(parsed.keyMessages || []),
+          tone: parsed.tone || '',
+          keywords: JSON.stringify(parsed.keywords || []),
+          audience: parsed.audience || '',
+          content_type: parsed.contentType || '',
+          summary: parsed.summary || ''
+        }})
+      }).then(r => r.json()).then(saved => {
+        const kbId = Array.isArray(saved) ? saved[0]?.id : saved?.id;
+        if (!kbId) return;
+        if (parsed.context) {
+          fetch('/.netlify/functions/supabase', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'saveContext', data: { kb_id: kbId, content: parsed.context } })
+          });
+        }
+        if (parsed.parts && parsed.parts.length > 0) {
+          fetch('/.netlify/functions/supabase', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'saveParts', data: parsed.parts.map(p => ({ kb_id: kbId, type: p.type, content: p.content })) })
+          });
+        }
+      });
 
-    renderKB();
-    document.getElementById('genBtn').disabled = false;
-    setStep(2);
-    showToast('✓ 학습 완료!');
-  } catch(e) {
-    showToast('학습 중 오류가 발생했습니다');
+      showToast(`✓ ${content.name} 학습 완료`);
+
+    } catch(e) {
+      files[i].status = 'error'; renderFileList();
+      showToast(`${files[i].name} 학습 실패`);
+    }
+
+    // 다음 파일 전 5초 대기 (rate limit 방지)
+    if (i < files.length - 1) {
+      btn.textContent = `대기 중 (${i+2}/${files.length} 준비)...`;
+      await new Promise(r => setTimeout(r, 5000));
+    }
   }
-  btn.disabled = false; btn.textContent = '다시 학습하기';
+
+  await loadKBList();
+  btn.disabled = false;
+  btn.textContent = '다시 학습하기';
+  showToast('모든 파일 학습 완료!');
 }
 
 function renderKB() {
