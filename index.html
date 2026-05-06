@@ -514,7 +514,7 @@ async function learnFiles() {
 
       const msgContent = [];
       if (content.type === 'text') {
-        msgContent.push({ type:'text', text:`=== 파일: ${content.name} ===\n${content.content.slice(0,4000)}` });
+        msgContent.push({ type:'text', text:`=== 파일: ${content.name} ===\n${content.content.slice(0,2000)}` });
       } else if (content.type === 'pdf') {
         msgContent.push({ type:'document', source:{ type:'base64', media_type:'application/pdf', data:content.data } });
       }
@@ -530,17 +530,17 @@ async function learnFiles() {
   "summary":"전체 요약 2-3문장",
   "context":"이 콘텐츠의 핵심 맥락과 지식. 3-5문장.",
   "parts":[
-    {"type":"사연","content":"실제 사연이나 스토리 한 문단"},
-    {"type":"수치","content":"구체적 수치나 통계 한 문단"},
-    {"type":"표현","content":"인상적인 표현이나 문구 한 문단"},
-    {"type":"사례","content":"구체적 사례 한 문단"},
-    {"type":"개념","content":"핵심 개념 설명 한 문단"}
+    {"type":"사연","content":"실제 사연이나 스토리"},
+    {"type":"수치","content":"구체적 수치나 통계"},
+    {"type":"표현","content":"인상적인 표현이나 문구"},
+    {"type":"사례","content":"구체적 사례"},
+    {"type":"개념","content":"핵심 개념 설명"}
   ]
 }` });
 
       const res = await fetch("/.netlify/functions/claude", {
         method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ model:'claude-sonnet-4-5', max_tokens:20000, messages:[{ role:'user', content:msgContent }] })
+        body: JSON.stringify({ model:'claude-sonnet-4-5', max_tokens:25000, messages:[{ role:'user', content:msgContent }] })
       });
       const d = await res.json();
       if (d.error) throw new Error(d.error.message);
@@ -677,7 +677,7 @@ ${toneHint ? `톤: ${toneHint}` : ''}
     // 순차 실행 (rate limit 방지)
     const resMeta = await fetch("/.netlify/functions/claude", {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ model:'claude-sonnet-4-5', max_tokens:1200, messages:[{ role:'user', content:promptMeta }] })
+      body: JSON.stringify({ model:'claude-sonnet-4-5', max_tokens:8000, messages:[{ role:'user', content:promptMeta }] })
     });
     const dMeta = await resMeta.json();
     if (dMeta.error) throw new Error(dMeta.error.message);
@@ -686,7 +686,7 @@ ${toneHint ? `톤: ${toneHint}` : ''}
 
     const resBody = await fetch("/.netlify/functions/claude", {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ model:'claude-sonnet-4-5', max_tokens:2000, messages:[{ role:'user', content:promptBody }] })
+      body: JSON.stringify({ model:'claude-sonnet-4-5', max_tokens:8000, messages:[{ role:'user', content:promptBody }] })
     });
     const dBody = await resBody.json();
     if (dBody.error) throw new Error(dBody.error.message);
@@ -826,7 +826,7 @@ ${partsText || (kb.keyMessages||[]).map(m => `[메시지] ${m}`).join('\n')}
   try {
     const res = await fetch("/.netlify/functions/claude", {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ model:'claude-sonnet-4-5', max_tokens:2000, messages:[{ role:'user', content:prompt }] })
+      body: JSON.stringify({ model:'claude-sonnet-4-5', max_tokens:8000, messages:[{ role:'user', content:prompt }] })
     });
     const d = await res.json();
     if (d.error) throw new Error(d.error.message);
@@ -934,7 +934,7 @@ async function runDirectorReview() {
     const reviews = await Promise.all(DIRECTORS.map(d =>
       fetch('/.netlify/functions/claude', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: 'claude-sonnet-4-5', max_tokens: 600,
+        body: JSON.stringify({ model: 'claude-sonnet-4-5', max_tokens: 2000,
           messages: [{ role: 'user', content:
             `당신은 ${d.name}입니다. ${d.role}.
 
@@ -1009,7 +1009,7 @@ async function rewriteWithFeedback() {
   try {
     const res = await fetch('/.netlify/functions/claude', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: 'claude-sonnet-4-5', max_tokens: 1500,
+      body: JSON.stringify({ model: 'claude-sonnet-4-5', max_tokens: 8000,
         messages: [{ role: 'user', content:
           `아래 본문을 피드백을 반영해서 재각색하세요.
 
@@ -1094,7 +1094,7 @@ ${text}`;
   try {
     const res = await fetch("/.netlify/functions/claude", {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ model:'claude-sonnet-4-5', max_tokens:2000,
+      body: JSON.stringify({ model:'claude-sonnet-4-5', max_tokens:8000,
         messages:[{ role:'user', content:prompt }] })
     });
     const d = await res.json();
