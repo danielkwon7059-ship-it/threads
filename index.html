@@ -530,17 +530,17 @@ async function learnFiles() {
   "summary":"전체 요약 2-3문장",
   "context":"이 콘텐츠의 핵심 맥락과 지식. 3-5문장.",
   "parts":[
-    {"type":"사연","content":"실제 사연이나 스토리 한 문장"},
-    {"type":"수치","content":"구체적 수치나 통계 한 문장"},
-    {"type":"표현","content":"인상적인 표현이나 문구 한 문장"},
-    {"type":"사례","content":"구체적 사례 한 문장"},
-    {"type":"개념","content":"핵심 개념 설명 한 문장"}
+    {"type":"사연","content":"실제 사연이나 스토리 한 문단"},
+    {"type":"수치","content":"구체적 수치나 통계 한 문단"},
+    {"type":"표현","content":"인상적인 표현이나 문구 한 문단"},
+    {"type":"사례","content":"구체적 사례 한 문단"},
+    {"type":"개념","content":"핵심 개념 설명 한 문단"}
   ]
 }` });
 
       const res = await fetch("/.netlify/functions/claude", {
         method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ model:'claude-sonnet-4-5', max_tokens:2000, messages:[{ role:'user', content:msgContent }] })
+        body: JSON.stringify({ model:'claude-sonnet-4-5', max_tokens:20000, messages:[{ role:'user', content:msgContent }] })
       });
       const d = await res.json();
       if (d.error) throw new Error(d.error.message);
