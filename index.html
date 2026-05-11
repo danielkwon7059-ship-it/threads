@@ -1398,7 +1398,7 @@ async function loadKBList() {
           <div style="font-size:12px;font-weight:600;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${k.name || '이름없음'}</div>
           <div style="font-size:11px;color:var(--text3);margin-top:2px">${new Date(k.created_at).toLocaleDateString('ko-KR')}</div>
         </div>
-        <button onclick="deleteKB(${k.id}, this)" style="flex-shrink:0;margin-left:8px;font-size:11px;padding:3px 8px;border-radius:5px;background:transparent;border:1px solid var(--border2);color:var(--clr-흥미);cursor:pointer;">삭제</button>
+        <button onclick="moveKB(${k.id})" style="flex-shrink:0;margin-left:4px;font-size:11px;padding:3px 8px;border-radius:5px;background:transparent;border:1px solid var(--border2);color:var(--clr-정보);cursor:pointer;">이동</button><button onclick="deleteKB(${k.id}, this)" style="flex-shrink:0;margin-left:4px;font-size:11px;padding:3px 8px;border-radius:5px;background:transparent;border:1px solid var(--border2);color:var(--clr-흥미);cursor:pointer;">삭제</button>
       </div>`).join('');
   } catch(e) {
     document.getElementById('kbList').innerHTML = '<div style="font-size:12px;color:var(--text3)">불러오기 실패</div>';
@@ -1445,6 +1445,28 @@ async function loadAllKB(kbList) {
   renderKB();
   document.getElementById('genBtn').disabled = false;
   setStep(2);
+}
+
+async function moveKB(id) {
+  const sel = document.getElementById('projectSelect');
+  const options = Array.from(sel.options).filter(o => o.value);
+  if (!options.length) { showToast('이동할 프로젝트가 없어요. 먼저 프로젝트를 만들어주세요'); return; }
+
+  const names = options.map(o => o.text).join('\n');
+  const choice = prompt(`이동할 프로젝트 이름을 입력하세요:\n${names}`);
+  if (!choice) return;
+
+  const target = options.find(o => o.text === choice);
+  if (!target) { showToast('프로젝트를 찾을 수 없어요'); return; }
+
+  try {
+    await fetch('/.netlify/functions/supabase', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'moveKB', data: { id, project_id: parseInt(target.value) } })
+    });
+    showToast('이동됐어요');
+    loadKBList();
+  } catch(e) { showToast('이동 실패'); }
 }
 
 async function deleteKB(id, btn) {
