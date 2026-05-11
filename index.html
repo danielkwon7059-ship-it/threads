@@ -1406,6 +1406,13 @@ async function loadKBList() {
 }
 
 async function loadAllKB(kbList) {
+  if (!kbList || kbList.length === 0) {
+    kb = null;
+    document.getElementById('genBtn').disabled = true;
+    document.getElementById('kbSec').style.display = 'none';
+    showToast('이 프로젝트에 학습 데이터가 없어요');
+    return;
+  }
   const allParts = [];
   const allMessages = [];
   const allKeywords = [];
