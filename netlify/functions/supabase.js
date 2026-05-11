@@ -1,1544 +1,225 @@
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>공시 스튜디오</title>
-<link href="https://fonts.googleapis.com/css2?family=Gmarket+Sans:wght@300;500;700&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
-<style>
-:root {
-  --bg: #0d0d0f;
-  --surface: #16161a;
-  --surface2: #1e1e24;
-  --border: #2a2a35;
-  --border2: #383845;
-  --text: #e8e8f0;
-  --text2: #9090a8;
-  --text3: #5a5a70;
-  --clr-흥미: #ff4d6d;
-  --clr-재미: #ffd166;
-  --clr-정보: #4cc9f0;
-  --clr-공감: #7bed9f;
-  --accent: #7c6aff;
-  --accent2: #a594ff;
-}
-* { margin:0; padding:0; box-sizing:border-box; }
-body { background:var(--bg); color:var(--text); font-family:'Noto Sans KR',sans-serif; min-height:100vh; overflow-x:hidden; }
+exports.handler = async (event) => {
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 200,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS'
+      },
+      body: ''
+    };
+  }
+  if (event.httpMethod !== 'POST') {
+    return { statusCode: 405, body: 'Method Not Allowed' };
+  }
 
-/* HEADER */
-header {
-  display:flex; align-items:center; justify-content:space-between;
-  padding:18px 40px; border-bottom:1px solid var(--border);
-  position:sticky; top:0; background:rgba(13,13,15,0.94);
-  backdrop-filter:blur(12px); z-index:100;
-}
-.logo {
-  font-family:'Gmarket Sans',sans-serif; font-size:18px; font-weight:700;
-  background:linear-gradient(135deg,var(--accent2),var(--clr-정보));
-  -webkit-background-clip:text; -webkit-text-fill-color:transparent;
-}
-.steps { display:flex; gap:6px; align-items:center; }
-.step-pill {
-  display:flex; align-items:center; gap:7px; padding:6px 14px;
-  border-radius:20px; font-size:12px; color:var(--text3);
-  border:1px solid transparent; transition:all 0.2s;
-}
-.step-pill.active { color:var(--text); background:var(--surface2); border-color:var(--border2); }
-.step-num {
-  width:19px; height:19px; border-radius:50%; background:var(--border);
-  display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700;
-}
-.step-pill.active .step-num { background:var(--accent); color:#fff; }
+  const headers = { 'Access-Control-Allow-Origin': '*' };
+  const SUPA_URL = process.env.SUPABASE_URL;
+  const SUPA_KEY = process.env.SUPABASE_KEY;
 
-/* LAYOUT */
-main { display:grid; grid-template-columns:340px 1fr; min-height:calc(100vh - 61px); }
-
-/* SIDEBAR */
-.sidebar {
-  border-right:1px solid var(--border); padding:28px 24px;
-  display:flex; flex-direction:column; gap:28px;
-  overflow-y:auto; max-height:calc(100vh - 61px);
-  position:sticky; top:61px;
-}
-.sec-title {
-  font-size:10px; font-weight:700; letter-spacing:2px;
-  color:var(--text3); text-transform:uppercase; margin-bottom:12px;
-}
-
-/* UPLOAD */
-.upload-zone {
-  border:1.5px dashed var(--border2); border-radius:12px; padding:24px 16px;
-  text-align:center; cursor:pointer; transition:all 0.2s; background:var(--surface); position:relative;
-}
-.upload-zone:hover, .upload-zone.drag-over { border-color:var(--accent); background:rgba(124,106,255,0.06); }
-.upload-zone input[type=file] { position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; }
-.upload-zone .uicon { font-size:26px; display:block; margin-bottom:8px; }
-.upload-zone p { font-size:12px; color:var(--text2); line-height:1.6; }
-.upload-zone span.hl { color:var(--accent2); font-weight:600; }
-
-.file-list { display:flex; flex-direction:column; gap:6px; margin-top:10px; }
-.file-item {
-  display:flex; align-items:center; justify-content:space-between;
-  padding:7px 11px; background:var(--surface2); border-radius:8px; border:1px solid var(--border);
-}
-.fi-left { display:flex; align-items:center; gap:7px; min-width:0; }
-.fi-name { font-size:12px; color:var(--text2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:160px; }
-.fi-badge {
-  font-size:10px; font-weight:700; padding:2px 7px; border-radius:6px; flex-shrink:0;
-}
-.fi-badge.done { background:rgba(123,237,159,0.15); color:var(--clr-공감); }
-.fi-badge.loading { background:rgba(124,106,255,0.15); color:var(--accent2); }
-.fi-badge.error { background:rgba(255,77,109,0.15); color:var(--clr-흥미); }
-.fi-badge.pending { background:var(--border); color:var(--text3); }
-
-.btn-learn {
-  width:100%; padding:12px; background:linear-gradient(135deg,var(--accent),#5a4fd4);
-  border:none; border-radius:10px; color:#fff;
-  font-family:'Gmarket Sans',sans-serif; font-size:14px; font-weight:500;
-  cursor:pointer; transition:all 0.2s;
-}
-.btn-learn:hover { opacity:0.88; transform:translateY(-1px); }
-.btn-learn:disabled { opacity:0.4; cursor:not-allowed; transform:none; }
-
-/* KB CARD */
-.kb-card { background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:14px; }
-.kb-row { display:flex; justify-content:space-between; align-items:center; padding:5px 0; border-bottom:1px solid var(--border); font-size:12px; }
-.kb-row:last-child { border-bottom:none; }
-.kb-row .lbl { color:var(--text3); }
-.kb-row .val { color:var(--text2); font-weight:600; text-align:right; max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.kb-row .val.ok { color:var(--clr-공감); }
-
-/* CONTENT AREA */
-.content-area { padding:20px 28px; display:flex; flex-direction:column; gap:20px; overflow-y:auto; }
-
-/* CONDITION PANEL */
-.cond-panel { background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:28px; }
-.cond-panel h2 { font-family:'Gmarket Sans',sans-serif; font-size:16px; font-weight:700; margin-bottom:24px; display:flex; align-items:center; gap:10px; }
-.cond-panel h2 .badge { font-size:10px; background:var(--accent); color:#fff; padding:3px 10px; border-radius:10px; letter-spacing:1px; }
-
-/* SLIDERS */
-.slider-section { margin-bottom:26px; }
-.slider-grid { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
-.slider-item { }
-.slider-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
-.slider-label { font-size:12px; font-weight:700; letter-spacing:0.5px; }
-.slider-label.흥미 { color:var(--clr-흥미); }
-.slider-label.재미 { color:var(--clr-재미); }
-.slider-label.정보 { color:var(--clr-정보); }
-.slider-label.공감 { color:var(--clr-공감); }
-.slider-val { font-size:13px; font-weight:700; font-family:'Gmarket Sans',sans-serif; }
-.slider-val.흥미 { color:var(--clr-흥미); }
-.slider-val.재미 { color:var(--clr-재미); }
-.slider-val.정보 { color:var(--clr-정보); }
-.slider-val.공감 { color:var(--clr-공감); }
-
-/* custom range */
-input[type=range] {
-  -webkit-appearance:none; width:100%; height:4px;
-  border-radius:2px; outline:none; cursor:pointer;
-  background:var(--border2);
-}
-input[type=range].흥미::-webkit-slider-thumb { -webkit-appearance:none; width:16px; height:16px; border-radius:50%; background:var(--clr-흥미); cursor:pointer; }
-input[type=range].재미::-webkit-slider-thumb { -webkit-appearance:none; width:16px; height:16px; border-radius:50%; background:var(--clr-재미); cursor:pointer; }
-input[type=range].정보::-webkit-slider-thumb { -webkit-appearance:none; width:16px; height:16px; border-radius:50%; background:var(--clr-정보); cursor:pointer; }
-input[type=range].공감::-webkit-slider-thumb { -webkit-appearance:none; width:16px; height:16px; border-radius:50%; background:var(--clr-공감); cursor:pointer; }
-
-/* weight bar */
-.weight-bar { display:flex; height:6px; border-radius:3px; overflow:hidden; margin-top:4px; margin-bottom:20px; gap:1px; }
-.wb-seg { height:100%; transition:width 0.3s ease; }
-.wb-seg.흥미 { background:var(--clr-흥미); }
-.wb-seg.재미 { background:var(--clr-재미); }
-.wb-seg.정보 { background:var(--clr-정보); }
-.wb-seg.공감 { background:var(--clr-공감); }
-
-/* COUNT SELECTOR */
-.count-row { display:flex; align-items:center; gap:14px; margin-bottom:24px; }
-.count-label { font-size:11px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:var(--text3); }
-.count-pills { display:flex; gap:6px; }
-.count-pill {
-  width:44px; height:36px; border-radius:8px; background:var(--surface2);
-  border:1.5px solid var(--border2); color:var(--text3); font-size:15px; font-weight:700;
-  cursor:pointer; display:flex; align-items:center; justify-content:center;
-  font-family:'Gmarket Sans',sans-serif; transition:all 0.15s;
-}
-.count-pill:hover { border-color:var(--border2); color:var(--text2); }
-.count-pill.active { background:rgba(124,106,255,0.15); border-color:var(--accent); color:var(--accent2); }
-
-/* EXTRA INPUTS */
-.extra-row { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:22px; }
-.inp-block label { display:block; font-size:10px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:var(--text3); margin-bottom:7px; }
-.inp-block input {
-  width:100%; background:var(--surface2); border:1px solid var(--border2);
-  border-radius:8px; padding:9px 12px; font-family:'Noto Sans KR',sans-serif;
-  font-size:13px; color:var(--text); outline:none; transition:border-color 0.2s;
-}
-.inp-block input:focus { border-color:var(--accent); }
-::placeholder { color:var(--text3); }
-
-/* GENERATE BTN */
-.btn-gen {
-  width:100%; padding:15px; background:linear-gradient(135deg,#ff4d6d,#c040a0);
-  border:none; border-radius:10px; color:#fff;
-  font-family:'Gmarket Sans',sans-serif; font-size:15px; font-weight:700;
-  cursor:pointer; transition:all 0.2s; letter-spacing:0.5px;
-}
-.btn-gen:hover { opacity:0.9; transform:translateY(-1px); }
-.btn-gen:disabled { opacity:0.4; cursor:not-allowed; transform:none; }
-
-/* RESULTS */
-.results-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; }
-.results-header h2 { font-family:'Gmarket Sans',sans-serif; font-size:16px; font-weight:700; }
-.results-meta { font-size:12px; color:var(--text3); }
-
-/* TITLE CARDS */
-.title-grid { display:flex; flex-direction:column; gap:10px; margin-bottom:28px; }
-.title-card {
-  background:var(--surface); border:1.5px solid var(--border); border-radius:8px;
-  padding:8px 12px; cursor:pointer; transition:all 0.2s; position:relative; overflow:hidden;
-}
-.title-card::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; }
-.title-card[data-p="흥미"]::before { background:var(--clr-흥미); }
-.title-card[data-p="재미"]::before { background:var(--clr-재미); }
-.title-card[data-p="정보"]::before { background:var(--clr-정보); }
-.title-card[data-p="공감"]::before { background:var(--clr-공감); }
-.title-card:hover { border-color:var(--border2); }
-.title-card.sel { border-color:var(--accent); background:rgba(124,106,255,0.07); }
-
-.tc-top { display:flex; align-items:center; justify-content:space-between; gap:8px; }
-.tc-left { flex:1; min-width:0; }
-.tc-badges { display:flex; gap:3px; flex-wrap:wrap; margin-bottom:4px; }
-.tc-badge { font-size:9px; font-weight:700; padding:1px 6px; border-radius:4px; letter-spacing:0.5px; }
-.tc-badge.흥미 { background:rgba(255,77,109,0.18); color:var(--clr-흥미); }
-.tc-badge.재미 { background:rgba(255,209,102,0.18); color:var(--clr-재미); }
-.tc-badge.정보 { background:rgba(76,201,240,0.18); color:var(--clr-정보); }
-.tc-badge.공감 { background:rgba(123,237,159,0.18); color:var(--clr-공감); }
-.tc-text { font-size:13px; font-weight:600; line-height:1.4; color:var(--text); font-family:'Gmarket Sans',sans-serif; }
-
-.tc-bars { display:flex; flex-direction:column; gap:3px; min-width:100px; }
-.tc-bar-row { display:flex; align-items:center; gap:4px; }
-.tc-bar-lbl { font-size:9px; color:var(--text3); width:16px; text-align:right; flex-shrink:0; }
-.tc-bar-track { flex:1; height:2px; background:var(--border); border-radius:2px; overflow:hidden; }
-.tc-bar-fill { height:100%; border-radius:2px; transition:width 0.5s ease; }
-.tc-bar-fill.흥미 { background:var(--clr-흥미); }
-.tc-bar-fill.재미 { background:var(--clr-재미); }
-.tc-bar-fill.정보 { background:var(--clr-정보); }
-.tc-bar-fill.공감 { background:var(--clr-공감); }
-.tc-bar-num { font-size:9px; color:var(--text3); width:22px; text-align:right; flex-shrink:0; }
-
-.tc-sel-dot {
-  position:absolute; bottom:8px; right:8px; width:16px; height:16px;
-  border-radius:50%; background:var(--accent); color:#fff;
-  font-size:9px; font-weight:700; display:none; align-items:center; justify-content:center;
-}
-.title-card.sel .tc-sel-dot { display:flex; }
-
-/* CONTENT BLOCKS */
-.cb-stack { display:flex; flex-direction:column; gap:8px; }
-.cb { background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
-.cb-head {
-  display:flex; align-items:center; justify-content:space-between;
-  padding:11px 18px; background:var(--surface2); border-bottom:1px solid var(--border);
-}
-.cb-lbl { font-size:10px; font-weight:700; letter-spacing:2px; text-transform:uppercase; color:var(--text3); }
-.cb-acts { display:flex; gap:6px; }
-.btn-sm {
-  font-size:11px; padding:4px 11px; border-radius:6px; cursor:pointer;
-  transition:all 0.15s; font-family:'Noto Sans KR',sans-serif; font-weight:500;
-  border:1px solid var(--border2); background:transparent; color:var(--text3);
-}
-.btn-sm:hover { background:var(--border2); color:var(--text); }
-.btn-sm.acc { background:var(--accent); border-color:var(--accent); color:#fff; }
-.btn-sm.acc:hover { opacity:0.85; }
-.cb-body {
-  padding:10px 14px; font-size:13px; line-height:1.7; color:var(--text2);
-  white-space:pre-wrap; min-height:0;
-}
-
-/* EMPTY */
-.empty-state { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:260px; color:var(--text3); gap:12px; text-align:center; }
-.empty-icon { font-size:44px; opacity:0.25; }
-.empty-state p { font-size:13px; line-height:1.8; }
-
-/* SKELETON */
-@keyframes pulse { 0%,100%{opacity:0.35} 50%{opacity:0.7} }
-.sk { background:var(--surface2); border-radius:8px; animation:pulse 1.4s infinite; }
-
-/* TOAST */
-.toast {
-  position:fixed; bottom:24px; right:24px;
-  background:var(--surface2); border:1px solid var(--border2);
-  color:var(--text); padding:11px 18px; border-radius:10px;
-  font-size:13px; font-weight:500; transform:translateY(16px);
-  opacity:0; transition:all 0.22s; z-index:999;
-}
-.toast.show { transform:translateY(0); opacity:1; }
-
-::-webkit-scrollbar { width:4px; }
-::-webkit-scrollbar-track { background:transparent; }
-::-webkit-scrollbar-thumb { background:var(--border2); border-radius:2px; }
-</style>
-</head>
-<body>
-
-<header>
-  <div class="logo">공시 스튜디오</div>
-  <div class="steps">
-    <div class="step-pill active" id="sp1"><div class="step-num">1</div>학습</div>
-    <span style="color:var(--border2);font-size:12px">›</span>
-    <div class="step-pill" id="sp2"><div class="step-num">2</div>조건 설정</div>
-    <span style="color:var(--border2);font-size:12px">›</span>
-    <div class="step-pill" id="sp3"><div class="step-num">3</div>생성 결과</div>
-  </div>
-</header>
-
-<main>
-  <!-- SIDEBAR -->
-  <aside class="sidebar">
-    <div>
-      <div class="sec-title">파일 업로드</div>
-      <div class="upload-zone" id="uploadZone">
-        <input type="file" id="fileInput" multiple accept=".txt,.pdf,.md,.csv,.docx,.xlsx,.xls,.pptx,.rtf,.json">
-        <span class="uicon">⬆</span>
-        <p><span class="hl">파일 선택</span> 또는 드래그<br><span style="font-size:11px;color:var(--text3)">TXT · PDF · MD · CSV</span></p>
-      </div>
-      <div class="file-list" id="fileList"></div>
-    </div>
-    <div>
-      <button class="btn-learn" id="learnBtn" onclick="learnFiles()" disabled>학습 시작하기</button>
-    </div>
-    <div>
-      <div class="sec-title">프로젝트</div>
-      <div style="display:flex;gap:6px;margin-bottom:8px;">
-        <select id="projectSelect" onchange="onProjectChange()" style="flex:1;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;padding:6px 8px;font-size:12px;color:var(--text);outline:none;">
-          <option value="">전체</option>
-        </select>
-        <button onclick="createProject()" style="padding:5px 10px;background:var(--accent);border:none;border-radius:6px;color:#fff;font-size:12px;cursor:pointer;">+</button>
-      </div>
-    </div>
-    <div>
-      <div class="sec-title">저장된 학습 데이터</div>
-      <div id="kbList" style="display:flex;flex-direction:column;gap:6px;">
-        <div style="font-size:12px;color:var(--text3)">불러오는 중...</div>
-      </div>
-    </div>
-    <div id="kbSec" style="display:none">
-      <div class="sec-title">학습 현황</div>
-      <div class="kb-card" id="kbCard"></div>
-    </div>
-    <div>
-      <div class="sec-title">저장된 타이틀</div>
-      <div id="savedTitlesList" style="display:flex;flex-direction:column;gap:6px;">
-        <div style="font-size:12px;color:var(--text3)">저장된 타이틀 없음</div>
-      </div>
-    </div>
-    <div>
-      <div class="sec-title">Threads 설정</div>
-      <div style="display:flex;flex-direction:column;gap:8px;">
-        <input type="password" id="threadsToken" placeholder="액세스 토큰 입력"
-          style="width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:9px 12px;font-size:12px;color:var(--text);outline:none;font-family:'Noto Sans KR',sans-serif;"
-          oninput="localStorage.setItem('threads_token',this.value)">
-        <div style="font-size:11px;color:var(--text3);">토큰은 이 브라우저에만 저장돼요</div>
-      </div>
-    </div>
-  </aside>
-  <div class="content-area">
-
-    <!-- CONDITION -->
-    <div class="cond-panel">
-      <h2>콘텐츠 조건 설정 <span class="badge">STEP 2</span></h2>
-
-      <div class="slider-section">
-        <div class="sec-title" style="margin-bottom:14px">포함할 속성 선택</div>
-        <div style="display:flex;gap:10px;flex-wrap:wrap;">
-          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:8px 16px;border-radius:8px;border:1.5px solid rgba(255,77,109,0.4);background:var(--surface2);transition:all 0.15s;" id="chk-label-흥미">
-            <input type="checkbox" id="chk-흥미" checked onchange="updateChkStyle('흥미')" style="display:none">
-            <span style="font-size:13px;font-weight:700;color:var(--clr-흥미)">흥미</span>
-          </label>
-          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:8px 16px;border-radius:8px;border:1.5px solid rgba(255,209,102,0.4);background:var(--surface2);transition:all 0.15s;" id="chk-label-재미">
-            <input type="checkbox" id="chk-재미" checked onchange="updateChkStyle('재미')" style="display:none">
-            <span style="font-size:13px;font-weight:700;color:var(--clr-재미)">재미</span>
-          </label>
-          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:8px 16px;border-radius:8px;border:1.5px solid rgba(76,201,240,0.4);background:var(--surface2);transition:all 0.15s;" id="chk-label-정보">
-            <input type="checkbox" id="chk-정보" checked onchange="updateChkStyle('정보')" style="display:none">
-            <span style="font-size:13px;font-weight:700;color:var(--clr-정보)">정보</span>
-          </label>
-          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:8px 16px;border-radius:8px;border:1.5px solid rgba(123,237,159,0.4);background:var(--surface2);transition:all 0.15s;" id="chk-label-공감">
-            <input type="checkbox" id="chk-공감" checked onchange="updateChkStyle('공감')" style="display:none">
-            <span style="font-size:13px;font-weight:700;color:var(--clr-공감)">공감</span>
-          </label>
-        </div>
-      </div>
-
-      <div class="slider-section" style="margin-bottom:20px;">
-        <div class="sec-title" style="margin-bottom:14px">도입부 신뢰 요소 (선택)</div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;">
-          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:6px 12px;border-radius:6px;border:1.5px solid rgba(165,148,255,0.3);background:var(--surface2);transition:all 0.15s;" id="trust-label-사회적증거"><input type="checkbox" id="trust-사회적증거" onchange="updateTrustStyle('사회적증거')" style="display:none"><span style="font-size:12px;font-weight:600;color:var(--text3)">사회적증거</span></label>
-          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:6px 12px;border-radius:6px;border:1.5px solid rgba(165,148,255,0.3);background:var(--surface2);transition:all 0.15s;" id="trust-label-권위"><input type="checkbox" id="trust-권위" onchange="updateTrustStyle('권위')" style="display:none"><span style="font-size:12px;font-weight:600;color:var(--text3)">권위</span></label>
-          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:6px 12px;border-radius:6px;border:1.5px solid rgba(165,148,255,0.3);background:var(--surface2);transition:all 0.15s;" id="trust-label-희소성"><input type="checkbox" id="trust-희소성" onchange="updateTrustStyle('희소성')" style="display:none"><span style="font-size:12px;font-weight:600;color:var(--text3)">희소성</span></label>
-          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:6px 12px;border-radius:6px;border:1.5px solid rgba(165,148,255,0.3);background:var(--surface2);transition:all 0.15s;" id="trust-label-구체성"><input type="checkbox" id="trust-구체성" onchange="updateTrustStyle('구체성')" style="display:none"><span style="font-size:12px;font-weight:600;color:var(--text3)">구체성</span></label>
-          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:6px 12px;border-radius:6px;border:1.5px solid rgba(165,148,255,0.3);background:var(--surface2);transition:all 0.15s;" id="trust-label-근접성"><input type="checkbox" id="trust-근접성" onchange="updateTrustStyle('근접성')" style="display:none"><span style="font-size:12px;font-weight:600;color:var(--text3)">근접성</span></label>
-          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:6px 12px;border-radius:6px;border:1.5px solid rgba(165,148,255,0.3);background:var(--surface2);transition:all 0.15s;" id="trust-label-투명성"><input type="checkbox" id="trust-투명성" onchange="updateTrustStyle('투명성')" style="display:none"><span style="font-size:12px;font-weight:600;color:var(--text3)">투명성</span></label>
-          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:6px 12px;border-radius:6px;border:1.5px solid rgba(165,148,255,0.3);background:var(--surface2);transition:all 0.15s;" id="trust-label-변화"><input type="checkbox" id="trust-변화" onchange="updateTrustStyle('변화')" style="display:none"><span style="font-size:12px;font-weight:600;color:var(--text3)">변화</span></label>
-        </div>
-      </div>
-
-      <div class="count-row">
-        <span class="count-label">타이틀 개수</span>
-        <div class="count-pills" id="countPills">
-          <div class="count-pill" onclick="setCount(3)">3</div>
-          <div class="count-pill active" onclick="setCount(4)">4</div>
-          <div class="count-pill" onclick="setCount(5)">5</div>
-        </div>
-      </div>
-
-      <div class="extra-row">
-        <div class="inp-block">
-          <label>페르소나 힌트 (선택)</label>
-          <input type="text" id="personaHint" placeholder="예: 2030 직장인, 자영업자">
-        </div>
-        <div class="inp-block">
-          <label>톤 & 스타일 (선택)</label>
-          <input type="text" id="toneHint" placeholder="예: 유머, 감성적, 공식적">
-        </div>
-      </div>
-
-      <button class="btn-gen" id="genBtn" onclick="generateContent()" disabled>✦ 콘텐츠 생성하기</button>
-    </div>
-
-    <!-- RESULTS -->
-    <div id="resultsSection">
-      <div class="empty-state">
-        <div class="empty-icon">✦</div>
-        <p>파일을 업로드하고 학습시킨 뒤<br>조건을 설정해 콘텐츠를 생성하세요</p>
-      </div>
-    </div>
-
-  </div>
-</main>
-
-<div class="toast" id="toast"></div>
-
-<script>
-// ── STATE ──
-let files = [];
-let kb = null;
-let titleCount = 4;
-let selTitleIdx = 0;
-let result = null;
-const weights = { 흥미:50, 재미:50, 정보:50, 공감:50 };
-
-// ── CHECKBOXES ──
-function getSelectedCats() {
-  return ['흥미','재미','정보','공감'].filter(c => document.getElementById('chk-'+c)?.checked);
-}
-function updateChkStyle(cat) {
-  const checked = document.getElementById('chk-'+cat).checked;
-  const label = document.getElementById('chk-label-'+cat);
-  const clrMap = { '흥미':'rgba(255,77,109,0.3)', '재미':'rgba(255,209,102,0.3)', '정보':'rgba(76,201,240,0.3)', '공감':'rgba(123,237,159,0.3)' };
-  const bgMap  = { '흥미':'rgba(255,77,109,0.12)', '재미':'rgba(255,209,102,0.12)', '정보':'rgba(76,201,240,0.12)', '공감':'rgba(123,237,159,0.12)' };
-  label.style.borderColor = checked ? clrMap[cat].replace('0.3','0.9') : clrMap[cat];
-  label.style.background  = checked ? bgMap[cat] : 'var(--surface2)';
-  label.style.opacity = checked ? '1' : '0.45';
-}
-// 초기화 + 신뢰요소 + 프로젝트
-
-function getSelectedTrust() {
-  return ['사회적증거','권위','희소성','구체성','근접성','투명성','변화'].filter(t => document.getElementById('trust-'+t)?.checked);
-}
-function updateTrustStyle(t) {
-  const checked = document.getElementById('trust-'+t).checked;
-  const label = document.getElementById('trust-label-'+t);
-  if (!label) return;
-  label.style.borderColor = checked ? 'var(--accent2)' : 'rgba(165,148,255,0.3)';
-  label.style.background = checked ? 'rgba(165,148,255,0.12)' : 'var(--surface2)';
-  label.style.opacity = checked ? '1' : '0.6';
-  const span = label.querySelector('span');
-  if (span) span.style.color = checked ? 'var(--accent2)' : 'var(--text3)';
-}
-
-let currentProjectId = null;
-async function loadProjects() {
   try {
-    const res = await fetch('/.netlify/functions/supabase', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ action:'loadProjects' })
-    });
-    const data = await res.json();
-    const sel = document.getElementById('projectSelect');
-    if (!sel) return;
-    sel.innerHTML = '<option value="">전체</option>' +
-      (data||[]).map(p => `<option value="${p.id}">${p.name}</option>`).join('');
-    if (currentProjectId) sel.value = currentProjectId;
-  } catch(e) {}
-}
-async function createProject() {
-  const name = prompt('프로젝트 이름을 입력하세요');
-  if (!name) return;
-  try {
-    const res = await fetch('/.netlify/functions/supabase', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ action:'saveProject', data:{ name } })
-    });
-    const d = await res.json();
-    const id = Array.isArray(d) ? d[0]?.id : d?.id;
-    if (id) currentProjectId = id;
-    await loadProjects();
-    const sel = document.getElementById('projectSelect');
-    if (sel && id) sel.value = id;
-    showToast('프로젝트 생성됐어요');
-  } catch(e) { showToast('생성 실패'); }
-}
-function onProjectChange() {
-  const sel = document.getElementById('projectSelect');
-  currentProjectId = sel.value ? parseInt(sel.value) : null;
-  loadKBList();
-}
-window.addEventListener('DOMContentLoaded', () => {
-  ['흥미','재미','정보','공감'].forEach(c => updateChkStyle(c));
-  const saved = localStorage.getItem('threads_token');
-  if (saved) document.getElementById('threadsToken').value = saved;
-  loadProjects();
-  loadKBList();
-  loadSavedContents();
-});
+    const { action, data } = JSON.parse(event.body);
 
-// ── COUNT ──
-function setCount(n) {
-  titleCount = n;
-  document.querySelectorAll('.count-pill').forEach(p => {
-    p.classList.toggle('active', parseInt(p.textContent) === n);
-  });
-}
-
-// ── FILE UPLOAD ──
-const uploadZone = document.getElementById('uploadZone');
-const fileInput  = document.getElementById('fileInput');
-
-uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
-uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
-uploadZone.addEventListener('drop', e => { e.preventDefault(); uploadZone.classList.remove('drag-over'); addFiles(Array.from(e.dataTransfer.files)); });
-fileInput.addEventListener('change', () => { addFiles(Array.from(fileInput.files)); fileInput.value = ''; });
-
-function addFiles(newFiles) {
-  newFiles.forEach(f => { if (!files.find(x => x.name === f.name)) files.push({ file:f, name:f.name, status:'pending' }); });
-  renderFileList();
-  document.getElementById('learnBtn').disabled = files.length === 0;
-}
-function renderFileList() {
-  const el = document.getElementById('fileList');
-  el.innerHTML = files.map(f => `
-    <div class="file-item">
-      <div class="fi-left">
-        <span>${f.name.endsWith('.pdf') ? '📄' : '📝'}</span>
-        <span class="fi-name">${f.name}</span>
-      </div>
-      <span class="fi-badge ${f.status}">${{pending:'대기',loading:'분석중',done:'학습됨',error:'오류'}[f.status]}</span>
-    </div>`).join('');
-}
-
-async function readFile(fileObj) {
-  return new Promise(resolve => {
-    const name = fileObj.name.toLowerCase();
-    if (name.endsWith('.pdf')) {
-      const r = new FileReader();
-      r.onload = e => resolve({ name:fileObj.name, type:'pdf', data:e.target.result.split(',')[1] });
-      r.readAsDataURL(fileObj);
-    } else if (name.endsWith('.docx') || name.endsWith('.xlsx') || name.endsWith('.xls') || name.endsWith('.pptx') || name.endsWith('.rtf') || name.endsWith('.csv') || name.endsWith('.json') || name.endsWith('.md') || name.endsWith('.txt')) {
-      const r = new FileReader();
-      r.onload = e => resolve({ name:fileObj.name, type:'text', content:e.target.result.slice(0, 50000) });
-      r.readAsText(fileObj);
-    } else {
-      // 지원 안 되는 형식 — 파일명만 기록
-      resolve({ name:fileObj.name, type:'unsupported', content:'' });
-    }
-  });
-}
-
-// ── SAFE JSON PARSE ──
-function safeParseJSON(raw) {
-  // 1. strip markdown fences
-  let s = raw.replace(/^```[\w]*\n?/gm, '').replace(/```$/gm, '').trim();
-  // 2. find first { and last }
-  const start = s.indexOf('{');
-  const end   = s.lastIndexOf('}');
-  if (start === -1 || end === -1) throw new Error('No JSON object found');
-  s = s.slice(start, end + 1);
-  // 3. try direct parse
-  try { return JSON.parse(s); } catch(_) {}
-  // 4. fix common issues: trailing commas, unescaped newlines in strings
-  s = s
-    .replace(/,\s*([}\]])/g, '$1')           // trailing commas
-    .replace(/[\r\n]+/g, ' ')                // literal newlines → space
-    .replace(/([^\\])\\([^"\\\/bfnrtu])/g, '$1\\\\$2'); // bad escapes
-  return JSON.parse(s);
-}
-
-// ── LEARN ──
-// 참고 파일: fileInput으로 업로드된 파일들 (텍스트/PDF 모두 처리)
-async function learnFiles() {
-  const btn = document.getElementById('learnBtn');
-  btn.disabled = true;
-
-  for (let i = 0; i < files.length; i++) {
-    files[i].status = 'loading'; renderFileList();
-    btn.textContent = `학습 중 (${i+1}/${files.length})...`;
-
-    try {
-      const content = await readFile(files[i].file);
-      files[i].status = 'done'; renderFileList();
-
-      const msgContent = [];
-      if (content.type === 'text') {
-        msgContent.push({ type:'text', text:`=== 파일: ${content.name} ===\n${content.content.slice(0,2000)}` });
-      } else if (content.type === 'pdf') {
-        msgContent.push({ type:'document', source:{ type:'base64', media_type:'application/pdf', data:content.data } });
-      }
-      msgContent.push({ type:'text', text:`위 파일을 분석하세요. 반드시 아래 형식의 JSON 객체만 반환하세요. 마크다운 코드블록 금지. 설명 금지. JSON 값 안에 큰따옴표(") 사용 금지.
-
-{
-  "topic":"핵심 주제",
-  "keyMessages":["메시지1","메시지2","메시지3"],
-  "tone":"어조",
-  "keywords":["키워드1","키워드2","키워드3"],
-  "audience":"타겟 독자",
-  "contentType":"콘텐츠 유형",
-  "summary":"전체 요약 2-3문장",
-  "context":"이 콘텐츠의 핵심 맥락과 지식. 3-5문장.",
-  "parts":[
-    {"type":"사연","content":"실제 사연이나 스토리"},
-    {"type":"수치","content":"구체적 수치나 통계"},
-    {"type":"표현","content":"인상적인 표현이나 문구"},
-    {"type":"사례","content":"구체적 사례"},
-    {"type":"개념","content":"핵심 개념 설명"}
-  ]
-}` });
-
-      const res = await fetch("/.netlify/functions/claude", {
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ model:'claude-sonnet-4-5', max_tokens:25000, messages:[{ role:'user', content:msgContent }] })
+    if (action === 'saveKB') {
+      const res = await fetch(`${SUPA_URL}/rest/v1/knowledge_base`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPA_KEY,
+          'Authorization': `Bearer ${SUPA_KEY}`,
+          'Prefer': 'return=representation'
+        },
+        body: JSON.stringify(data)
       });
-      const d = await res.json();
-      if (d.error) throw new Error(d.error.message);
-      const parsed = safeParseJSON(d.content[0].text);
-      parsed._count = 1;
+      const result = await res.json();
+      return { statusCode: 200, headers, body: JSON.stringify(result) };
+    }
 
-      // Supabase에 저장
-      const kbName = content.name.slice(0, 100);
-      fetch('/.netlify/functions/supabase', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'saveKB', data: {
-          name: kbName,
-          topic: parsed.topic || '',
-          key_messages: JSON.stringify(parsed.keyMessages || []),
-          tone: parsed.tone || '',
-          keywords: JSON.stringify(parsed.keywords || []),
-          audience: parsed.audience || '',
-          content_type: parsed.contentType || '',
-          summary: parsed.summary || '',
-          project_id: currentProjectId || null
-        }})
-      }).then(r => r.json()).then(saved => {
-        const kbId = Array.isArray(saved) ? saved[0]?.id : saved?.id;
-        if (!kbId) return;
-        if (parsed.context) {
-          fetch('/.netlify/functions/supabase', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'saveContext', data: { kb_id: kbId, content: parsed.context } })
-          });
-        }
-        if (parsed.parts && parsed.parts.length > 0) {
-          fetch('/.netlify/functions/supabase', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'saveParts', data: parsed.parts.map(p => ({ kb_id: kbId, type: p.type, content: p.content, source: '원본' })) })
-          });
-        }
+    if (action === 'saveProject') {
+      const res = await fetch(`${SUPA_URL}/rest/v1/projects`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}`, 'Prefer': 'return=representation' },
+        body: JSON.stringify(data)
       });
-
-      showToast(`✓ ${content.name} 학습 완료`);
-
-    } catch(e) {
-      files[i].status = 'error'; renderFileList();
-      showToast(`${files[i].name} 학습 실패`);
+      const result = await res.json();
+      return { statusCode: 200, headers, body: JSON.stringify(result) };
     }
 
-    // 다음 파일 전 5초 대기 (rate limit 방지)
-    if (i < files.length - 1) {
-      btn.textContent = `대기 중 (${i+2}/${files.length} 준비)...`;
-      await new Promise(r => setTimeout(r, 5000));
-    }
-  }
-
-  await loadKBList();
-  btn.disabled = false;
-  btn.textContent = '다시 학습하기';
-  showToast('모든 파일 학습 완료!');
-}
-
-function renderKB() {
-  document.getElementById('kbSec').style.display = 'block';
-  document.getElementById('kbCard').innerHTML = `
-    <div class="kb-row"><span class="lbl">파일</span><span class="val ok">${kb._count}개 완료</span></div>
-    <div class="kb-row"><span class="lbl">주제</span><span class="val">${(kb.topic||'').slice(0,30)}…</span></div>
-    <div class="kb-row"><span class="lbl">유형</span><span class="val">${kb.contentType||'-'}</span></div>
-    <div class="kb-row"><span class="lbl">독자</span><span class="val">${(kb.audience||'').slice(0,22)}</span></div>
-    <div class="kb-row"><span class="lbl">키워드</span><span class="val">${(kb.keywords||[]).slice(0,4).join(', ')}</span></div>`;
-}
-
-// ── GENERATE ──
-// 본문 짤림 방지: 타이틀+페르소나(JSON)와 본문을 별도 API 호출로 분리
-// 참고 파일: 업로드된 학습 파일들 (kb 객체에 요약 저장됨)
-async function generateContent() {
-  if (!kb) { showToast('먼저 파일을 학습시켜주세요'); return; }
-  const btn = document.getElementById('genBtn');
-  btn.disabled = true; btn.textContent = '생성 중...';
-  showSkeleton();
-
-  const selectedCats = getSelectedCats();
-  const selectedTrust = getSelectedTrust();
-  if (selectedCats.length === 0) { showToast('속성을 하나 이상 선택해주세요'); btn.disabled = false; btn.textContent = '✦ 콘텐츠 생성하기'; return; }
-
-  const personaHint = document.getElementById('personaHint').value.trim();
-  const toneHint    = document.getElementById('toneHint').value.trim();
-
-  // --- 호출 1: 타이틀 + 페르소나 (JSON) ---
-  const promptMeta = `당신은 공시 콘텐츠 전문 작가입니다. 이모지 사용 금지.
-
-## 학습 데이터
-주제: ${kb.topic}
-핵심 메시지: ${(kb.keyMessages||[]).join(' / ')}
-어조: ${kb.tone}
-키워드: ${(kb.keywords||[]).join(', ')}
-독자: ${kb.audience}
-요약: ${kb.summary}
-
-## 생성 조건
-- 타이틀 개수: ${titleCount}개
-- 필수 포함 속성: ${selectedCats.join(', ')} → 생성되는 모든 타이틀에 이 속성들이 반드시 다 포함되어야 함. 단 타이틀마다 어떤 속성이 더 강하게 느껴지는지는 달라도 됨.
-- 도입부 신뢰 요소: ${selectedTrust.length ? selectedTrust.join(', ') + ' 요소를 도입부에 자연스럽게 녹여낼 것' : '없음'}
-${personaHint ? `- 페르소나 힌트: ${personaHint}` : ''}
-${toneHint ? `- 톤 힌트: ${toneHint}` : ''}
-
-## 출력 규칙
-JSON 객체만 반환. 마크다운 금지. 큰따옴표(") 값 안에 사용 금지.
-
-{"titles":[{"text":"타이틀","primaryCat":"흥미","cats":["흥미"],"scores":{"흥미":80,"재미":40,"정보":50,"공감":30}}],"persona":{"name":"페르소나이름","description":"상황설명","painPoints":["고민1","고민2"]}}`;
-
-  // --- 호출 2: 본문 (텍스트) ---
-  // context와 parts 불러오기
-  let contextText = kb.context || kb.summary || '';
-  let partsText = '';
-  if (kb.parts && kb.parts.length > 0) {
-    partsText = kb.parts.map(p => `[${p.type}] ${p.content}`).join('\n');
-  }
-
-  const promptBody = `당신은 공시 콘텐츠 전문 작가입니다. 이모지 사용 금지.
-
-## 반드시 지켜야 할 맥락 (고정 — 절대 변경 불가)
-${contextText}
-
-## 활용 가능한 소재 부품 (아래에서 이번 콘텐츠에 맞는 것만 골라 조합)
-${partsText || (kb.keyMessages||[]).map(m => `[메시지] ${m}`).join('\n')}
-
-## 생성 조건
-포함할 속성 (필수 — 전부 반영): ${selectedCats.join(', ')}
-${personaHint ? `페르소나: ${personaHint}` : ''}
-${toneHint ? `톤: ${toneHint}` : ''}
-
-## 작성 규칙
-- 맥락(고정)은 반드시 유지하면서, 소재 부품에서 필요한 것만 골라 조합
-- 맥락 일관성 유지: 타이틀 주제 하나로 처음부터 끝까지. 구성 방식은 자유롭게
-- 사연/수치/표현은 각색 가능, 핵심 맥락은 유지
-- 이모지 사용 금지
-- 5-7문단, 텍스트만 반환 (JSON 아님)`;
-
-  try {
-    // 순차 실행 (rate limit 방지)
-    const resMeta = await fetch("/.netlify/functions/claude", {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ model:'claude-sonnet-4-5', max_tokens:25000, messages:[{ role:'user', content:promptMeta }] })
-    });
-    const dMeta = await resMeta.json();
-    if (dMeta.error) throw new Error(dMeta.error.message);
-
-    await new Promise(r => setTimeout(r, 5000)); // 5초 대기
-
-    const resBody = await fetch("/.netlify/functions/claude", {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ model:'claude-sonnet-4-5', max_tokens:25000, messages:[{ role:'user', content:promptBody }] })
-    });
-    const dBody = await resBody.json();
-    if (dBody.error) throw new Error(dBody.error.message);
-
-    result = safeParseJSON(dMeta.content[0].text);
-    result.body = dBody.content[0].text.trim();
-    selTitleIdx = 0;
-    renderResults();
-    setStep(3);
-  } catch(e) {
-    console.error(e);
-    showToast('생성 중 오류가 발생했습니다');
-    showEmptyResult();
-  }
-  btn.disabled = false; btn.textContent = '✦ 콘텐츠 생성하기';
-}
-
-function renderResults() {
-  const r = result;
-  const titleHTML = r.titles.map((t,i) => `
-    <div class="title-card ${i===selTitleIdx?'sel':''}" data-p="${t.primaryCat}" onclick="selTitle(${i})">
-      <div class="tc-top">
-        <div class="tc-left">
-          <div class="tc-badges">${t.cats.map(c=>`<span class="tc-badge ${c}">${c}</span>`).join('')}</div>
-          <div class="tc-text">${t.text}</div>
-        </div>
-        <div class="tc-bars">
-          ${['흥미','재미','정보','공감'].map(c=>`
-            <div class="tc-bar-row">
-              <span class="tc-bar-lbl">${c}</span>
-              <div class="tc-bar-track"><div class="tc-bar-fill ${c}" style="width:${t.scores[c]||0}%"></div></div>
-              <span class="tc-bar-num">${t.scores[c]||0}</span>
-            </div>`).join('')}
-        </div>
-      </div>
-      <div style="display:flex;gap:4px;margin-top:6px;">
-        <button class="btn-sm acc" style="font-size:10px;padding:3px 8px;" onclick="event.stopPropagation();generateBodyForTitle(${i})">본문 생성</button>
-        <button class="btn-sm" style="font-size:10px;padding:3px 8px;" onclick="event.stopPropagation();saveContent('${t.text.replace(/'/g,"\\'")}')">저장</button>
-      </div>
-      <div class="tc-sel-dot">✓</div>
-    </div>`).join('');
-
-  const p = r.persona;
-  const ppHTML = (p.painPoints||[]).map(pp=>`<span style="display:inline-block;margin:2px 4px 2px 0;padding:3px 10px;background:rgba(124,106,255,0.12);border-radius:6px;font-size:12px;color:var(--accent2)">${pp}</span>`).join('');
-
-  document.getElementById('resultsSection').innerHTML = `
-    <div class="results-header">
-      <h2>생성 결과</h2>
-      <span class="results-meta">타이틀 ${r.titles.length}개 생성됨</span>
-    </div>
-    <div class="title-grid">${titleHTML}</div>
-    <div class="cb-stack">
-      <div class="cb">
-        <div class="cb-head">
-          <span class="cb-lbl">페르소나</span>
-          <div class="cb-acts"><button class="btn-sm" onclick="copyBlock('cb-persona')">복사</button></div>
-        </div>
-        <div class="cb-body" id="cb-persona"><strong style="color:var(--text);font-size:15px;font-family:Gmarket Sans,sans-serif">${p.name}</strong>\n\n${p.description}\n\n${ppHTML}</div>
-      </div>
-      <div class="cb">
-        <div class="cb-head">
-          <span class="cb-lbl">본문</span>
-          <div class="cb-acts">
-            <button class="btn-sm" onclick="copyBlock('cb-body')">복사</button>
-            <button class="btn-sm acc" onclick="regenBody()">선택 타이틀로 재각색</button>
-            <button class="btn-sm" onclick="splitThreads('v1')">스레드 V1 말투</button>
-            <button class="btn-sm" onclick="splitThreads('v2')">스레드 V2 길이</button>
-            <button class="btn-sm" style="background:rgba(123,237,159,0.15);border-color:var(--clr-공감);color:var(--clr-공감)" onclick="publishThreads()">즉시 발행</button>
-            <button class="btn-sm" style="background:rgba(76,201,240,0.15);border-color:var(--clr-정보);color:var(--clr-정보)" onclick="scheduleThreads()">예약 발행</button>
-            <button class="btn-sm" style="background:rgba(165,148,255,0.15);border-color:var(--accent2);color:var(--accent2)" onclick="runDirectorReview()">감독 평가</button>
-          </div>
-        </div>
-        <div class="cb-body" id="cb-body">${r.body}</div>
-      </div>
-      <div class="cb" id="feedback-block" style="display:none;">
-        <div class="cb-head">
-          <span class="cb-lbl">감독 평가</span>
-          <div class="cb-acts">
-            <button class="btn-sm" onclick="addFeedbackToParts()" style="background:rgba(123,237,159,0.15);border-color:var(--clr-공감);color:var(--clr-공감)">창고에 추가</button>
-          </div>
-        </div>
-        <div class="cb-body" id="cb-feedback" style="display:flex;flex-direction:column;gap:6px;"></div>
-        <div style="padding:10px 14px;border-top:1px solid var(--border);">
-          <div style="font-size:10px;font-weight:700;letter-spacing:1px;color:var(--text3);margin-bottom:6px;">직접 피드백</div>
-          <div style="display:flex;gap:6px;">
-            <textarea id="my-feedback" placeholder="내 피드백 입력..." style="flex:1;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;padding:8px;font-size:12px;color:var(--text);resize:none;height:60px;font-family:Noto Sans KR,sans-serif;outline:none;"></textarea>
-            <button onclick="applyMyFeedback()" style="padding:6px 12px;background:var(--accent);border:none;border-radius:6px;color:#fff;font-size:11px;cursor:pointer;">반영</button>
-          </div>
-        </div>
-      </div>
-      <div class="cb">
-        <div class="cb-head">
-          <span class="cb-lbl">참고 파일</span>
-        </div>
-        <div class="cb-body" style="padding:14px 18px;display:flex;flex-wrap:wrap;gap:8px;">
-          ${files.filter(f=>f.status==='done').map(f=>`
-            <span style="display:inline-flex;align-items:center;gap:6px;padding:5px 12px;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;font-size:12px;color:var(--text2);">
-              <span>${f.name.endsWith('.pdf')?'📄':'📝'}</span>${f.name}
-            </span>`).join('')}
-        </div>
-      </div>
-    </div>`;
-}
-
-function selTitle(i) {
-  selTitleIdx = i;
-  // 타이틀 카드 선택 표시만 업데이트 (피드백 블록 유지)
-  document.querySelectorAll('.title-card').forEach((c,idx) => c.classList.toggle('sel', idx===i));
-}
-
-
-
-
-
-// 재각색: 선택된 타이틀 기준으로 본문 재생성
-// 참고 파일: kb 객체 (학습된 파일 요약)
-// 타이틀 선택 후 본문 생성 (핵심: 타이틀 하나의 주제만 일관되게)
-async function generateBodyForTitle(idx) {
-  if (!result || !kb) return;
-  selTitleIdx = idx;
-  renderResults();
-  const t = result.titles[idx];
-  const el = document.getElementById('cb-body');
-  if (!el) return;
-  el.innerHTML = '<span style="color:var(--text3)">본문 생성 중...</span>';
-
-  const partsText = (kb.parts||[]).map(p => `[${p.type}] ${p.content}`).join('\n');
-  const contextText = kb.context || kb.summary || '';
-
-  const prompt = `당신은 공시 콘텐츠 전문 작가입니다. 이모지 사용 금지.
-
-## 이번 콘텐츠 타이틀 (이 주제 하나만 처음부터 끝까지 일관되게 다룰 것)
-${t.text}
-
-## 반드시 지켜야 할 맥락 (고정)
-${contextText}
-
-## 활용 가능한 소재 부품 (타이틀 주제에 맞는 것만 골라 사용)
-${partsText || (kb.keyMessages||[]).map(m => `[메시지] ${m}`).join('\n')}
-
-## 작성 규칙
-- 타이틀 주제 하나만 처음부터 끝까지 일관된 맥락으로 다룰 것. 다른 주제 섞지 말 것.
-- 구성 방식은 자유롭게 (서순 강제 없음)
-- 맥락(고정)은 유지, 소재 부품은 타이틀에 맞는 것만 선택
-- 사연/표현은 각색 가능, 핵심 지식은 유지
-- 이모지 사용 금지
-- 5-7문단, 텍스트만 반환`;
-
-  try {
-    const res = await fetch("/.netlify/functions/claude", {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ model:'claude-sonnet-4-5', max_tokens:25000, messages:[{ role:'user', content:prompt }] })
-    });
-    const d = await res.json();
-    if (d.error) throw new Error(d.error.message);
-    el.textContent = d.content[0].text.trim();
-  } catch(e) { el.textContent = '오류가 발생했습니다.'; }
-}
-
-// 재각색도 동일 원칙 적용
-async function regenBody() {
-  if (!result || !kb) return;
-  generateBodyForTitle(selTitleIdx);
-}
-
-// 타이틀 저장
-// 콘텐츠 저장 (타이틀 + 본문 + 페르소나)
-async function saveContent(titleText) {
-  const bodyEl = document.getElementById('cb-body');
-  const personaEl = document.getElementById('cb-persona');
-  const bodyText = bodyEl ? bodyEl.innerText.trim() : '';
-
-  if (!bodyText || bodyText === '본문 생성 중...' || bodyText === '오류가 발생했습니다.') {
-    showToast('먼저 본문을 생성해주세요');
-    return;
-  }
-
-  try {
-    const res = await fetch('/.netlify/functions/supabase', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'saveContent', data: {
-        titles: titleText,
-        body: bodyText,
-        persona: personaEl ? personaEl.innerText.trim() : '',
-        kb_id: kb?._id || null
-      }})
-    });
-    const d = await res.json();
-    if (d.error) throw new Error(d.error.message);
-    showToast('저장됐어요');
-    loadSavedContents();
-  } catch(e) {
-    showToast('저장 실패: ' + e.message);
-  }
-}
-
-async function loadSavedContents() {
-  try {
-    const res = await fetch('/.netlify/functions/supabase', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'loadContents' })
-    });
-    const data = await res.json();
-    const el = document.getElementById('savedTitlesList');
-    if (!el) return;
-    if (!data || data.length === 0) {
-      el.innerHTML = '<div style="font-size:12px;color:var(--text3)">저장된 콘텐츠 없음</div>';
-      return;
-    }
-    el.innerHTML = data.map(c => `
-      <div style="padding:8px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">
-          <span style="flex:1;font-size:12px;color:var(--text2);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${c.titles || '제목없음'}</span>
-          <button onclick="deleteContent(${c.id})" style="font-size:11px;padding:1px 6px;background:transparent;border:1px solid var(--border2);color:var(--clr-흥미);border-radius:4px;cursor:pointer;flex-shrink:0;">×</button>
-        </div>
-        <div style="font-size:11px;color:var(--text3);margin-top:2px">${new Date(c.created_at).toLocaleDateString('ko-KR')}</div>
-      </div>`).join('');
-  } catch(e) {}
-}
-
-async function deleteContent(id) {
-  if (!confirm('삭제할까요?')) return;
-  try {
-    await fetch('/.netlify/functions/supabase', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'deleteContent', data: { id } })
-    });
-    showToast('삭제됐어요');
-    loadSavedContents();
-  } catch(e) { showToast('삭제 실패'); }
-}
-
-// ── 감독 평가 ──
-const DIRECTORS = [
-  { name: '미디어 마케팅 전문가', role: '바이럴 가능성, 플랫폼 적합성, 타겟 도달력 관점에서 평가' },
-  { name: '카피라이터', role: '훅의 강도, 언어의 설득력, 리듬감과 문장 흡입력 관점에서 평가' },
-  { name: '소비자 심리 전문가', role: '독자의 감정 반응, 공감 유발, 행동 유도 심리 관점에서 평가' },
-  { name: '편집장', role: '글의 맥락 일관성, 논리 흐름, 처음부터 끝까지 하나의 이야기로 자연스럽게 연결되는지, 군더더기는 없는지 관점에서 평가' },
-  { name: '실제 타겟 독자', role: '이 글을 보는 일반인 입장에서 솔직하게 평가' }
-];
-
-let lastFeedbacks = [];
-
-async function runDirectorReview() {
-  const bodyEl = document.getElementById('cb-body');
-  if (!bodyEl || !bodyEl.innerText.trim()) { showToast('먼저 본문을 생성해주세요'); return; }
-  const bodyText = bodyEl.innerText.trim();
-  const titleText = result?.titles?.[selTitleIdx]?.text || '';
-
-  const feedbackBlock = document.getElementById('feedback-block');
-  const feedbackEl = document.getElementById('cb-feedback');
-  feedbackBlock.style.display = 'block';
-  feedbackEl.innerHTML = '<span style="color:var(--text3)">4명의 감독이 평가 중...</span>';
-
-  try {
-    // 4명 병렬 평가
-    const reviews = await Promise.all(DIRECTORS.map(d =>
-      fetch('/.netlify/functions/claude', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: 'claude-sonnet-4-5', max_tokens:25000,
-          messages: [{ role: 'user', content:
-            `당신은 ${d.name}입니다. ${d.role}.
-
-타이틀: ${titleText}
-본문: ${bodyText}
-
-다음 JSON만 반환 (다른 텍스트 없이):
-{"score":0-100,"comment":"평가 2-3문장","improvement":"개선 제안 1-2문장"}` }] })
-      }).then(r => r.json()).then(d2 => {
-        const raw = d2.content?.[0]?.text || '{}';
-        const start = raw.indexOf('{'); const end = raw.lastIndexOf('}');
-        return { ...DIRECTORS.find(x => x.name === d.name), ...JSON.parse(raw.slice(start, end+1)) };
-      }).catch(() => ({ ...d, score: 0, comment: '평가 실패', improvement: '' }))
-    ));
-
-    lastFeedbacks = reviews;
-
-    // Supabase 저장
-    fetch('/.netlify/functions/supabase', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'saveFeedback', data: reviews.map(r => ({
-        content_text: bodyText.slice(0, 500),
-        persona: r.name,
-        score: r.score,
-        comment: r.comment,
-        improvement: r.improvement
-      }))})
-    });
-
-    const avgScore = Math.round(reviews.reduce((a,b) => a + (b.score||0), 0) / reviews.length);
-    const colorMap = { '미디어 마케팅 전문가': 'var(--clr-정보)', '카피라이터': 'var(--clr-재미)', '소비자 심리 전문가': 'var(--clr-공감)', '실제 타겟 독자': 'var(--clr-흥미)' };
-
-    feedbackEl.innerHTML = `
-      <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);margin-bottom:8px;">
-        <span style="font-size:12px;color:var(--text3)">평균 점수</span>
-        <span style="font-size:20px;font-weight:700;font-family:Gmarket Sans,sans-serif;color:${avgScore>=70?'var(--clr-공감)':avgScore>=50?'var(--clr-재미)':'var(--clr-흥미)'}">${avgScore}</span>
-        <span style="font-size:12px;color:var(--text3)">/ 100</span>
-        <button onclick="rewriteWithFeedback()" style="margin-left:auto;font-size:11px;padding:4px 12px;border-radius:6px;background:rgba(165,148,255,0.15);border:1px solid var(--accent2);color:var(--accent2);cursor:pointer;">체크된 피드백으로 재각색</button>
-      </div>
-      ${reviews.map((r,i) => `
-        <div style="padding:8px 10px;background:var(--surface);border:1px solid var(--border);border-radius:6px;">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
-            <input type="checkbox" id="fb-chk-${i}" checked style="cursor:pointer;accent-color:var(--accent)">
-            <span style="font-size:12px;font-weight:700;color:${colorMap[r.name]||'var(--text2)'};flex:1">${r.name}</span>
-            <span style="font-size:13px;font-weight:700;font-family:Gmarket Sans,sans-serif;color:var(--text)">${r.score}</span>
-          </div>
-          <div style="font-size:12px;color:var(--text2);line-height:1.5;margin-bottom:4px;">${r.comment}</div>
-          <div style="font-size:11px;color:var(--accent2);background:rgba(124,106,255,0.08);padding:4px 8px;border-radius:4px;">${r.improvement}</div>
-        </div>`).join('')}`;
-  } catch(e) {
-    feedbackEl.innerHTML = '<span style="color:var(--text3)">평가 중 오류가 발생했습니다.</span>';
-  }
-}
-
-async function applyMyFeedback() {
-  const input = document.getElementById('my-feedback');
-  if (!input || !input.value.trim()) { showToast('피드백을 입력해주세요'); return; }
-  const bodyEl = document.getElementById('cb-body');
-  if (!bodyEl) return;
-  const bodyText = bodyEl.innerText.trim().slice(0,3000);
-  const myFeedback = input.value.trim();
-  bodyEl.innerHTML = '<span style="color:var(--text3)">피드백 반영 중...</span>';
-  try {
-    const res = await fetch('/.netlify/functions/claude', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ model:'claude-sonnet-4-5', max_tokens:25000,
-        messages:[{ role:'user', content:`아래 본문에 내 피드백을 반영해서 재작성하세요.
-
-본문:
-${bodyText}
-
-피드백:
-${myFeedback}
-
-규칙: 타이틀 주제 하나로 일관된 맥락 유지. 이모지 금지. 텍스트만 반환.` }] })
-    });
-    const d = await res.json();
-    if (d.error) throw new Error(d.error.message);
-    bodyEl.textContent = d.content[0].text.trim();
-    input.value = '';
-  } catch(e) { bodyEl.textContent = '오류가 발생했습니다.'; }
-}
-
-async function rewriteWithFeedback() {
-  const bodyEl = document.getElementById('cb-body');
-  if (!bodyEl) return;
-  const bodyText = bodyEl.innerText.trim().slice(0, 3000);
-  if (!bodyText || bodyText === '본문 생성 중...') { showToast('본문이 없어요'); return; }
-  const titleText = result?.titles?.[selTitleIdx]?.text || '';
-
-  const selected = lastFeedbacks.filter((f, i) => {
-    const chk = document.getElementById(`fb-chk-${i}`);
-    return chk && chk.checked;
-  });
-  if (!selected.length) { showToast('피드백을 하나 이상 선택해주세요'); return; }
-
-  bodyEl.innerHTML = '<span style="color:var(--text3)">피드백 반영 재각색 중...</span>';
-
-  const feedbackText = selected.map(f => `[${f.name}] ${f.improvement}`).join('\n');
-
-  try {
-    const res = await fetch('/.netlify/functions/claude', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: 'claude-sonnet-4-5', max_tokens:25000,
-        messages: [{ role: 'user', content:
-          `아래 본문을 피드백을 반영해서 재각색하세요.
-
-타이틀: ${titleText}
-원본 본문:
-${bodyText}
-
-반영할 피드백:
-${feedbackText}
-
-작성 규칙:
-- 타이틀 주제 하나만 처음부터 끝까지 일관된 맥락으로
-- 구성 방식은 자유롭게 (서순 강제 없음)
-- 이모지 사용 금지
-- 텍스트만 반환` }] })
-    });
-    const d = await res.json();
-    if (d.error) throw new Error(d.error.message);
-    bodyEl.textContent = d.content[0].text.trim();
-  } catch(e) {
-    bodyEl.textContent = '오류가 발생했습니다.';
-  }
-}
-
-async function addFeedbackToParts() {
-  if (!lastFeedbacks.length) { showToast('먼저 감독 평가를 실행해주세요'); return; }
-  if (!kb) { showToast('학습 데이터가 없어요'); return; }
-
-  const improvements = lastFeedbacks
-    .filter(f => f.improvement)
-    .map(f => ({ type: '개선제안', content: `[${f.name}] ${f.improvement}` }));
-
-  if (!improvements.length) { showToast('추가할 개선 제안이 없어요'); return; }
-
-  const kbId = kb._id;
-  if (!kbId) { showToast('창고 ID를 찾을 수 없어요'); return; }
-
-  try {
-    await fetch('/.netlify/functions/supabase', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'saveParts', data: improvements.map(p => ({ ...p, kb_id: kbId })) })
-    });
-    showToast(`${improvements.length}개 개선 제안을 창고에 추가했어요`);
-  } catch(e) {
-    showToast('추가 실패: ' + e.message);
-  }
-}
-
-// 스레드 재작성: Claude API로 본문을 스레드 말투로 변환
-async function splitThreads(version) {
-  const body = document.getElementById('cb-body');
-  if (!body || !body.textContent.trim()) return;
-  const text = body.textContent.trim();
-
-  body.innerHTML = '<span style="color:var(--text3)">변환 중...</span>';
-
-  const structure = `훅(첫문장) → 문제제기 → 공감 → 해결/정보 → 마무리`;
-
-  const prompt = version === 'v1'
-    ? `아래 원문의 내용과 구조는 그대로 유지하고, 말투만 스레드 반말체로 바꾸세요.
-- 반말 사용 (~해, ~야, ~임, ~거야)
-- 서순: ${structure}
-- 문단 구분은 유지
-- 이모지 금지
-- JSON 배열만 반환: ["스레드1","스레드2",...]
-
-원문:
-${text}`
-    : `아래 원문을 스레드 감성으로 재작성하세요.
-- 서순 반드시 준수: ${structure}
-- 한 스레드당 150자 내외
-- 짧게 끊어치는 문장, 여백으로 호흡
-- 반말 사용 (~해, ~야, ~임, ~거야)
-- 첫 스레드: 읽고 싶게 만드는 훅 한 줄
-- 마지막 스레드: 여운 or 핵심 한 줄
-- 이모지 금지
-- JSON 배열만 반환: ["스레드1","스레드2",...]
-
-원문:
-${text}`;
-
-  try {
-    const res = await fetch("/.netlify/functions/claude", {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ model:'claude-sonnet-4-5', max_tokens:25000,
-        messages:[{ role:'user', content:prompt }] })
-    });
-    const d = await res.json();
-    if (d.error) throw new Error(d.error.message);
-    let raw = d.content[0].text.trim();
-    const arrStart = raw.indexOf('[');
-    const arrEnd = raw.lastIndexOf(']');
-    if (arrStart === -1 || arrEnd === -1) throw new Error('JSON 배열 없음');
-    raw = raw.slice(arrStart, arrEnd + 1);
-    const threads = JSON.parse(raw);
-    renderThreadCards(threads);
-  } catch(e) {
-    body.textContent = '변환 중 오류가 발생했습니다.';
-  }
-}
-
-function renderThreadCards(threads) {
-  const body = document.getElementById('cb-body');
-  const total = threads.length;
-  body.innerHTML = threads.map((c, i) => `
-    <div class="thread-card" style="border:1px solid var(--border2);border-radius:8px;padding:14px;margin-bottom:4px;background:var(--surface2);">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-        <span style="font-size:10px;color:var(--accent2);font-weight:700;letter-spacing:1px;" class="thread-num">${i+1} / ${total}</span>
-        <div style="display:flex;gap:4px;">
-          <button onclick="addThreadAfter(this)" style="font-size:11px;padding:2px 8px;border-radius:5px;background:transparent;border:1px solid var(--border2);color:var(--text3);cursor:pointer;" title="아래에 추가">+</button>
-          <button onclick="deleteThread(this)" style="font-size:11px;padding:2px 8px;border-radius:5px;background:transparent;border:1px solid var(--border2);color:var(--clr-흥미);cursor:pointer;" title="삭제">×</button>
-        </div>
-      </div>
-      <div contenteditable="true" style="font-size:14px;line-height:1.9;color:var(--text2);white-space:pre-wrap;outline:none;border-bottom:1px dashed var(--border2);padding-bottom:6px;" oninput="updateCharCount(this)">${c}</div>
-      <div style="font-size:11px;color:var(--text3);text-align:right;margin-top:6px;">${c.length}자</div>
-    </div>`).join('') +
-    `<button onclick="addThreadAtEnd()" style="width:100%;margin-top:4px;padding:8px;background:transparent;border:1.5px dashed var(--border2);border-radius:8px;color:var(--text3);font-size:12px;cursor:pointer;">+ 스레드 추가</button>`;
-  updateAllThreadNums();
-}
-
-function addThreadAfter(btn) {
-  const card = btn.closest('.thread-card');
-  const newCard = document.createElement('div');
-  newCard.className = 'thread-card';
-  newCard.style.cssText = 'border:1px solid var(--border2);border-radius:8px;padding:14px;margin-bottom:4px;background:var(--surface2);';
-  newCard.innerHTML = `
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-      <span style="font-size:10px;color:var(--accent2);font-weight:700;letter-spacing:1px;" class="thread-num"></span>
-      <div style="display:flex;gap:4px;">
-        <button onclick="addThreadAfter(this)" style="font-size:11px;padding:2px 8px;border-radius:5px;background:transparent;border:1px solid var(--border2);color:var(--text3);cursor:pointer;">+</button>
-        <button onclick="deleteThread(this)" style="font-size:11px;padding:2px 8px;border-radius:5px;background:transparent;border:1px solid var(--border2);color:var(--clr-흥미);cursor:pointer;">×</button>
-      </div>
-    </div>
-    <div contenteditable="true" style="font-size:14px;line-height:1.9;color:var(--text2);white-space:pre-wrap;outline:none;border-bottom:1px dashed var(--border2);padding-bottom:6px;" oninput="updateCharCount(this)">새 스레드를 입력하세요</div>
-    <div style="font-size:11px;color:var(--text3);text-align:right;margin-top:6px;">9자</div>`;
-  card.insertAdjacentElement('afterend', newCard);
-  updateAllThreadNums();
-  newCard.querySelector('[contenteditable]').focus();
-}
-
-function addThreadAtEnd() {
-  const body = document.getElementById('cb-body');
-  const addBtn = body.querySelector('button:last-child');
-  const newCard = document.createElement('div');
-  newCard.className = 'thread-card';
-  newCard.style.cssText = 'border:1px solid var(--border2);border-radius:8px;padding:14px;margin-bottom:4px;background:var(--surface2);';
-  newCard.innerHTML = `
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-      <span style="font-size:10px;color:var(--accent2);font-weight:700;letter-spacing:1px;" class="thread-num"></span>
-      <div style="display:flex;gap:4px;">
-        <button onclick="addThreadAfter(this)" style="font-size:11px;padding:2px 8px;border-radius:5px;background:transparent;border:1px solid var(--border2);color:var(--text3);cursor:pointer;">+</button>
-        <button onclick="deleteThread(this)" style="font-size:11px;padding:2px 8px;border-radius:5px;background:transparent;border:1px solid var(--border2);color:var(--clr-흥미);cursor:pointer;">×</button>
-      </div>
-    </div>
-    <div contenteditable="true" style="font-size:14px;line-height:1.9;color:var(--text2);white-space:pre-wrap;outline:none;border-bottom:1px dashed var(--border2);padding-bottom:6px;" oninput="updateCharCount(this)">새 스레드를 입력하세요</div>
-    <div style="font-size:11px;color:var(--text3);text-align:right;margin-top:6px;">9자</div>`;
-  addBtn.insertAdjacentElement('beforebegin', newCard);
-  updateAllThreadNums();
-  newCard.querySelector('[contenteditable]').focus();
-}
-
-function deleteThread(btn) {
-  const cards = document.querySelectorAll('#cb-body .thread-card');
-  if (cards.length <= 1) { showToast('최소 1개는 있어야 해요'); return; }
-  btn.closest('.thread-card').remove();
-  updateAllThreadNums();
-}
-
-function updateAllThreadNums() {
-  const cards = document.querySelectorAll('#cb-body .thread-card');
-  const total = cards.length;
-  cards.forEach((card, i) => {
-    const numEl = card.querySelector('.thread-num');
-    if (numEl) numEl.textContent = `${i+1} / ${total}`;
-  });
-}
-
-function updateCharCount(el) {
-  const countEl = el.parentElement.querySelector('[style*="text-align:right"]');
-  if (countEl) countEl.textContent = el.textContent.length + '자';
-}
-
-
-// 스레드 자동 발행: Netlify Function 프록시를 통해 Threads API 호출
-async function publishThreads() {
-  const token = localStorage.getItem('threads_token') || document.getElementById('threadsToken').value.trim();
-  if (!token) { showToast('먼저 Threads 액세스 토큰을 입력해주세요'); return; }
-
-  const cards = document.querySelectorAll('#cb-body [style*="border-radius:8px"]');
-  if (cards.length === 0) { showToast('먼저 스레드로 변환해주세요'); return; }
-
-  const threads = Array.from(cards).map(c => {
-    const textEl = c.querySelector('[contenteditable]') || c.querySelector('[style*="line-height"]');
-    return textEl ? textEl.textContent.trim() : '';
-  }).filter(t => t.length > 0);
-
-  if (threads.length === 0) { showToast('발행할 내용이 없어요'); return; }
-
-  const proxy = async (url, body) => {
-    const res = await fetch('/.netlify/functions/threads', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url, method: 'POST', body })
-    });
-    return res.json();
-  };
-
-  showToast(`총 ${threads.length}개 스레드 발행 시작...`);
-
-  try {
-    // 1. 유저 ID 가져오기
-    const meRes = await fetch(`/.netlify/functions/threads`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url: `https://graph.threads.net/v1.0/me?fields=id&access_token=${token}`, method: 'GET' })
-    });
-    const me = await meRes.json();
-    if (me.error) throw new Error(me.error.message);
-    const userId = me.id;
-
-    let replyToId = null;
-
-    for (let i = 0; i < threads.length; i++) {
-      // 2. 미디어 컨테이너 생성
-      const createBody = { media_type: 'TEXT', text: threads[i], access_token: token };
-      if (replyToId) createBody.reply_to_id = replyToId;
-
-      const created = await proxy(`https://graph.threads.net/v1.0/${userId}/threads`, createBody);
-      if (created.error) throw new Error(created.error.message);
-
-      // 3. 게시
-      const published = await proxy(`https://graph.threads.net/v1.0/${userId}/threads_publish`, { creation_id: created.id, access_token: token });
-      if (published.error) throw new Error(published.error.message);
-
-      replyToId = published.id;
-      showToast(`${i+1} / ${threads.length} 발행 완료`);
-
-      if (i < threads.length - 1) await new Promise(r => setTimeout(r, 1000));
-    }
-    showToast('모든 스레드 발행 완료!');
-  } catch(e) {
-    console.error(e);
-    showToast('발행 오류: ' + e.message);
-  }
-}
-
-// ── SUPABASE: KB 목록 불러오기 ──
-async function loadKBList() {
-  try {
-    const res = await fetch('/.netlify/functions/supabase', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'loadKB', data: currentProjectId ? { project_id: currentProjectId } : {} })
-    });
-    const data = await res.json();
-    const el = document.getElementById('kbList');
-    if (!data || data.length === 0) {
-      el.innerHTML = '<div style="font-size:12px;color:var(--text3)">저장된 학습 없음</div>';
-      return;
+    if (action === 'loadProjects') {
+      const res = await fetch(`${SUPA_URL}/rest/v1/projects?order=created_at.desc`, {
+        headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}` }
+      });
+      const result = await res.json();
+      return { statusCode: 200, headers, body: JSON.stringify(result) };
     }
 
-    // 전체 KB 통합 로드
-    await loadAllKB(data);
+    if (action === 'deleteProject') {
+      const id = data?.id;
+      await Promise.all([
+        fetch(`${SUPA_URL}/rest/v1/projects?id=eq.${id}`, { method: 'DELETE', headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}` } }),
+        fetch(`${SUPA_URL}/rest/v1/knowledge_base?project_id=eq.${id}`, { method: 'DELETE', headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}` } })
+      ]);
+      return { statusCode: 200, headers, body: JSON.stringify({ ok: true }) };
+    }
 
-    el.innerHTML = data.map(k => `
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;">
-        <div style="min-width:0;flex:1;">
-          <div style="font-size:12px;font-weight:600;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${k.name || '이름없음'}</div>
-          <div style="font-size:11px;color:var(--text3);margin-top:2px">${new Date(k.created_at).toLocaleDateString('ko-KR')}</div>
-        </div>
-        <button onclick="moveKB(${k.id})" style="flex-shrink:0;margin-left:4px;font-size:11px;padding:3px 8px;border-radius:5px;background:transparent;border:1px solid var(--border2);color:var(--clr-정보);cursor:pointer;">이동</button><button onclick="deleteKB(${k.id}, this)" style="flex-shrink:0;margin-left:4px;font-size:11px;padding:3px 8px;border-radius:5px;background:transparent;border:1px solid var(--border2);color:var(--clr-흥미);cursor:pointer;">삭제</button>
-      </div>`).join('');
-  } catch(e) {
-    document.getElementById('kbList').innerHTML = '<div style="font-size:12px;color:var(--text3)">불러오기 실패</div>';
+    if (action === 'saveProject') {
+      const res = await fetch(`${SUPA_URL}/rest/v1/projects`, {
+        method: 'POST',
+        headers: { 'Content-Type':'application/json', 'apikey':SUPA_KEY, 'Authorization':`Bearer ${SUPA_KEY}`, 'Prefer':'return=representation' },
+        body: JSON.stringify(data)
+      });
+      return { statusCode:200, headers, body: JSON.stringify(await res.json()) };
+    }
+
+    if (action === 'loadProjects') {
+      const res = await fetch(`${SUPA_URL}/rest/v1/projects?order=created_at.desc`, {
+        headers: { 'apikey':SUPA_KEY, 'Authorization':`Bearer ${SUPA_KEY}` }
+      });
+      return { statusCode:200, headers, body: JSON.stringify(await res.json()) };
+    }
+
+    if (action === 'deleteProject') {
+      await fetch(`${SUPA_URL}/rest/v1/projects?id=eq.${data.id}`, {
+        method:'DELETE', headers:{ 'apikey':SUPA_KEY, 'Authorization':`Bearer ${SUPA_KEY}` }
+      });
+      return { statusCode:200, headers, body: JSON.stringify({ ok:true }) };
+    }
+
+    if (action === 'loadKB') {
+      const projectId = data?.project_id;
+      const url = projectId
+        ? `${SUPA_URL}/rest/v1/knowledge_base?project_id=eq.${projectId}&order=created_at.desc&limit=20`
+        : `${SUPA_URL}/rest/v1/knowledge_base?order=created_at.desc&limit=20`;
+      const res = await fetch(url, {
+        headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}` }
+      });
+      const result = await res.json();
+      return { statusCode: 200, headers, body: JSON.stringify(result) };
+    }
+
+    if (action === 'saveScheduled') {
+      const res = await fetch(`${SUPA_URL}/rest/v1/scheduled_posts`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPA_KEY,
+          'Authorization': `Bearer ${SUPA_KEY}`,
+          'Prefer': 'return=representation'
+        },
+        body: JSON.stringify(data)
+      });
+      const result = await res.json();
+      return { statusCode: 200, headers, body: JSON.stringify(result) };
+    }
+
+    if (action === 'moveKB') {
+      const res = await fetch(`${SUPA_URL}/rest/v1/knowledge_base?id=eq.${data.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type':'application/json', 'apikey':SUPA_KEY, 'Authorization':`Bearer ${SUPA_KEY}` },
+        body: JSON.stringify({ project_id: data.project_id })
+      });
+      return { statusCode:200, headers, body: JSON.stringify({ ok:true }) };
+    }
+
+    if (action === 'deleteKB') {
+      const id = data?.id;
+      await Promise.all([
+        fetch(`${SUPA_URL}/rest/v1/knowledge_base?id=eq.${id}`, { method:'DELETE', headers:{ 'apikey':SUPA_KEY, 'Authorization':`Bearer ${SUPA_KEY}` } }),
+        fetch(`${SUPA_URL}/rest/v1/context?kb_id=eq.${id}`, { method:'DELETE', headers:{ 'apikey':SUPA_KEY, 'Authorization':`Bearer ${SUPA_KEY}` } }),
+        fetch(`${SUPA_URL}/rest/v1/parts?kb_id=eq.${id}`, { method:'DELETE', headers:{ 'apikey':SUPA_KEY, 'Authorization':`Bearer ${SUPA_KEY}` } })
+      ]);
+      return { statusCode: 200, headers, body: JSON.stringify({ ok: true }) };
+    }
+
+    if (action === 'saveFeedback') {
+      const res = await fetch(`${SUPA_URL}/rest/v1/feedback`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPA_KEY,
+          'Authorization': `Bearer ${SUPA_KEY}`,
+          'Prefer': 'return=representation'
+        },
+        body: JSON.stringify(data)
+      });
+      const result = await res.json();
+      return { statusCode: 200, headers, body: JSON.stringify(result) };
+    }
+
+    if (action === 'loadFeedback') {
+      const res = await fetch(`${SUPA_URL}/rest/v1/feedback?order=created_at.desc&limit=20`, {
+        headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}` }
+      });
+      const result = await res.json();
+      return { statusCode: 200, headers, body: JSON.stringify(result) };
+    }
+
+    if (action === 'loadContents') {
+      const res = await fetch(`${SUPA_URL}/rest/v1/contents?order=created_at.desc&limit=20`, {
+        headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}` }
+      });
+      const result = await res.json();
+      return { statusCode: 200, headers, body: JSON.stringify(result) };
+    }
+
+    if (action === 'deleteContent') {
+      const id = data?.id;
+      await fetch(`${SUPA_URL}/rest/v1/contents?id=eq.${id}`, {
+        method: 'DELETE',
+        headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}` }
+      });
+      return { statusCode: 200, headers, body: JSON.stringify({ ok: true }) };
+    }
+
+    if (action === 'saveContext') {
+      const res = await fetch(`${SUPA_URL}/rest/v1/context`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPA_KEY,
+          'Authorization': `Bearer ${SUPA_KEY}`,
+          'Prefer': 'return=representation'
+        },
+        body: JSON.stringify(data)
+      });
+      const result = await res.json();
+      return { statusCode: 200, headers, body: JSON.stringify(result) };
+    }
+
+    if (action === 'saveParts') {
+      const res = await fetch(`${SUPA_URL}/rest/v1/parts`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPA_KEY,
+          'Authorization': `Bearer ${SUPA_KEY}`,
+          'Prefer': 'return=representation'
+        },
+        body: JSON.stringify(data)
+      });
+      const result = await res.json();
+      return { statusCode: 200, headers, body: JSON.stringify(result) };
+    }
+
+    if (action === 'loadParts') {
+      const kbId = data?.kb_id;
+      const [ctxRes, partsRes] = await Promise.all([
+        fetch(`${SUPA_URL}/rest/v1/context?kb_id=eq.${kbId}`, {
+          headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}` }
+        }),
+        fetch(`${SUPA_URL}/rest/v1/parts?kb_id=eq.${kbId}`, {
+          headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}` }
+        })
+      ]);
+      const ctx = await ctxRes.json();
+      const parts = await partsRes.json();
+      return { statusCode: 200, headers, body: JSON.stringify({ context: ctx[0]?.content || '', parts }) };
+    }
+
+    return { statusCode: 400, headers, body: JSON.stringify({ error: 'Unknown action' }) };
+
+  } catch (e) {
+    return { statusCode: 500, headers, body: JSON.stringify({ error: e.message }) };
   }
-}
-
-async function loadAllKB(kbList) {
-  const allParts = [];
-  const allMessages = [];
-  const allKeywords = [];
-  let contextText = '';
-  let topic = '';
-  let audience = '';
-  let tone = '';
-
-  // 모든 KB의 parts를 병렬로 불러오기
-  const partsResults = await Promise.all(kbList.map(k =>
-    fetch('/.netlify/functions/supabase', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'loadParts', data: { kb_id: k.id } })
-    }).then(r => r.json()).catch(() => ({ context: '', parts: [] }))
-  ));
-
-  kbList.forEach((k, i) => {
-    if (k.topic) topic = k.topic;
-    if (k.audience) audience = k.audience;
-    if (k.tone) tone = k.tone;
-    const d = partsResults[i];
-    if (d.context) contextText += (contextText ? '\n' : '') + d.context;
-    if (d.parts) allParts.push(...d.parts);
-    try { allMessages.push(...JSON.parse(k.key_messages||'[]')); } catch(e) {}
-    try { allKeywords.push(...JSON.parse(k.keywords||'[]')); } catch(e) {}
-  });
-
-  kb = {
-    topic, audience, tone,
-    keyMessages: [...new Set(allMessages)],
-    keywords: [...new Set(allKeywords)],
-    summary: kbList.map(k => k.summary).filter(Boolean).join(' / '),
-    context: contextText,
-    parts: allParts,
-    _count: kbList.length, _id: kbList[0]?.id
-  };
-  renderKB();
-  document.getElementById('genBtn').disabled = false;
-  setStep(2);
-}
-
-async function moveKB(id) {
-  const sel = document.getElementById('projectSelect');
-  const options = Array.from(sel.options).filter(o => o.value);
-  if (!options.length) { showToast('이동할 프로젝트가 없어요. 먼저 프로젝트를 만들어주세요'); return; }
-
-  const names = options.map(o => o.text).join('\n');
-  const choice = prompt(`이동할 프로젝트 이름을 입력하세요:\n${names}`);
-  if (!choice) return;
-
-  const target = options.find(o => o.text === choice);
-  if (!target) { showToast('프로젝트를 찾을 수 없어요'); return; }
-
-  try {
-    await fetch('/.netlify/functions/supabase', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'moveKB', data: { id, project_id: parseInt(target.value) } })
-    });
-    showToast('이동됐어요');
-    loadKBList();
-  } catch(e) { showToast('이동 실패'); }
-}
-
-async function deleteKB(id, btn) {
-  if (!confirm('삭제할까요?')) return;
-  btn.textContent = '...';
-  try {
-    await fetch('/.netlify/functions/supabase', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'deleteKB', data: { id } })
-    });
-    showToast('삭제됐어요');
-    loadKBList();
-  } catch(e) {
-    showToast('삭제 실패');
-  }
-}
-
-// ── 예약 발행 ──
-async function scheduleThreads() {
-  const token = localStorage.getItem('threads_token') || document.getElementById('threadsToken').value.trim();
-  if (!token) { showToast('먼저 Threads 액세스 토큰을 입력해주세요'); return; }
-
-  const cards = document.querySelectorAll('#cb-body [style*="border-radius:8px"]');
-  if (cards.length === 0) { showToast('먼저 스레드로 변환해주세요'); return; }
-
-  const scheduledAt = prompt('발행 시간 입력 (예: 2026-05-06T09:00)');
-  if (!scheduledAt) return;
-
-  const threads = Array.from(cards).map((c, i) => {
-    const textEl = c.querySelector('[contenteditable]') || c.querySelector('[style*="line-height"]');
-    return { text: textEl ? textEl.textContent.trim() : '', order: i, scheduledAt, accessToken: token };
-  }).filter(t => t.text.length > 0);
-
-  try {
-    const res = await fetch('/.netlify/functions/supabase', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'saveScheduled', data: threads })
-    });
-    const data = await res.json();
-    if (data.error) throw new Error(data.error.message);
-    showToast(`${threads.length}개 스레드 예약 완료!`);
-  } catch(e) {
-    showToast('예약 저장 실패: ' + e.message);
-  }
-}
-
-function showSkeleton() {
-  document.getElementById('resultsSection').innerHTML = `
-    <div style="display:flex;flex-direction:column;gap:12px">
-      <div class="sk" style="height:18px;width:140px"></div>
-      <div class="sk" style="height:110px;border-radius:12px"></div>
-      <div class="sk" style="height:110px;border-radius:12px"></div>
-      <div class="sk" style="height:100px;border-radius:12px;margin-top:8px"></div>
-      <div class="sk" style="height:180px;border-radius:12px"></div>
-    </div>`;
-}
-function showEmptyResult() {
-  document.getElementById('resultsSection').innerHTML = `<div class="empty-state"><div class="empty-icon">⚠</div><p>생성에 실패했습니다.<br>다시 시도해주세요.</p></div>`;
-}
-function copyBlock(id) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  navigator.clipboard.writeText(el.innerText).then(() => showToast('복사되었습니다'));
-}
-function setStep(n) {
-  [1,2,3].forEach(i => document.getElementById('sp'+i).classList.toggle('active', i<=n));
-}
-function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg; t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2400);
-}
-</script>
-</body>
-</html>
+};
