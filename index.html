@@ -307,6 +307,15 @@ input[type=range].공감::-webkit-slider-thumb { -webkit-appearance:none; width:
       <button class="btn-learn" id="learnBtn" onclick="learnFiles()" disabled>학습 시작하기</button>
     </div>
     <div>
+      <div class="sec-title">프로젝트</div>
+      <div style="display:flex;gap:6px;margin-bottom:8px;">
+        <select id="projectSelect" onchange="onProjectChange()" style="flex:1;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;padding:6px 8px;font-size:12px;color:var(--text);outline:none;">
+          <option value="">전체</option>
+        </select>
+        <button onclick="createProject()" style="padding:5px 10px;background:var(--accent);border:none;border-radius:6px;color:#fff;font-size:12px;cursor:pointer;">+</button>
+      </div>
+    </div>
+    <div>
       <div class="sec-title">저장된 학습 데이터</div>
       <div id="kbList" style="display:flex;flex-direction:column;gap:6px;">
         <div style="font-size:12px;color:var(--text3)">불러오는 중...</div>
@@ -357,6 +366,19 @@ input[type=range].공감::-webkit-slider-thumb { -webkit-appearance:none; width:
             <input type="checkbox" id="chk-공감" checked onchange="updateChkStyle('공감')" style="display:none">
             <span style="font-size:13px;font-weight:700;color:var(--clr-공감)">공감</span>
           </label>
+        </div>
+      </div>
+
+      <div class="slider-section" style="margin-bottom:20px;">
+        <div class="sec-title" style="margin-bottom:14px">도입부 신뢰 요소 (선택)</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:6px 12px;border-radius:6px;border:1.5px solid rgba(165,148,255,0.3);background:var(--surface2);transition:all 0.15s;" id="trust-label-사회적증거"><input type="checkbox" id="trust-사회적증거" onchange="updateTrustStyle('사회적증거')" style="display:none"><span style="font-size:12px;font-weight:600;color:var(--text3)">사회적증거</span></label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:6px 12px;border-radius:6px;border:1.5px solid rgba(165,148,255,0.3);background:var(--surface2);transition:all 0.15s;" id="trust-label-권위"><input type="checkbox" id="trust-권위" onchange="updateTrustStyle('권위')" style="display:none"><span style="font-size:12px;font-weight:600;color:var(--text3)">권위</span></label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:6px 12px;border-radius:6px;border:1.5px solid rgba(165,148,255,0.3);background:var(--surface2);transition:all 0.15s;" id="trust-label-희소성"><input type="checkbox" id="trust-희소성" onchange="updateTrustStyle('희소성')" style="display:none"><span style="font-size:12px;font-weight:600;color:var(--text3)">희소성</span></label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:6px 12px;border-radius:6px;border:1.5px solid rgba(165,148,255,0.3);background:var(--surface2);transition:all 0.15s;" id="trust-label-구체성"><input type="checkbox" id="trust-구체성" onchange="updateTrustStyle('구체성')" style="display:none"><span style="font-size:12px;font-weight:600;color:var(--text3)">구체성</span></label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:6px 12px;border-radius:6px;border:1.5px solid rgba(165,148,255,0.3);background:var(--surface2);transition:all 0.15s;" id="trust-label-근접성"><input type="checkbox" id="trust-근접성" onchange="updateTrustStyle('근접성')" style="display:none"><span style="font-size:12px;font-weight:600;color:var(--text3)">근접성</span></label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:6px 12px;border-radius:6px;border:1.5px solid rgba(165,148,255,0.3);background:var(--surface2);transition:all 0.15s;" id="trust-label-투명성"><input type="checkbox" id="trust-투명성" onchange="updateTrustStyle('투명성')" style="display:none"><span style="font-size:12px;font-weight:600;color:var(--text3)">투명성</span></label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:6px 12px;border-radius:6px;border:1.5px solid rgba(165,148,255,0.3);background:var(--surface2);transition:all 0.15s;" id="trust-label-변화"><input type="checkbox" id="trust-변화" onchange="updateTrustStyle('변화')" style="display:none"><span style="font-size:12px;font-weight:600;color:var(--text3)">변화</span></label>
         </div>
       </div>
 
@@ -418,11 +440,64 @@ function updateChkStyle(cat) {
   label.style.background  = checked ? bgMap[cat] : 'var(--surface2)';
   label.style.opacity = checked ? '1' : '0.45';
 }
-// 초기화
+// 초기화 + 신뢰요소 + 프로젝트
+
+function getSelectedTrust() {
+  return ['사회적증거','권위','희소성','구체성','근접성','투명성','변화'].filter(t => document.getElementById('trust-'+t)?.checked);
+}
+function updateTrustStyle(t) {
+  const checked = document.getElementById('trust-'+t).checked;
+  const label = document.getElementById('trust-label-'+t);
+  if (!label) return;
+  label.style.borderColor = checked ? 'var(--accent2)' : 'rgba(165,148,255,0.3)';
+  label.style.background = checked ? 'rgba(165,148,255,0.12)' : 'var(--surface2)';
+  label.style.opacity = checked ? '1' : '0.6';
+  const span = label.querySelector('span');
+  if (span) span.style.color = checked ? 'var(--accent2)' : 'var(--text3)';
+}
+
+let currentProjectId = null;
+async function loadProjects() {
+  try {
+    const res = await fetch('/.netlify/functions/supabase', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ action:'loadProjects' })
+    });
+    const data = await res.json();
+    const sel = document.getElementById('projectSelect');
+    if (!sel) return;
+    sel.innerHTML = '<option value="">전체</option>' +
+      (data||[]).map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+    if (currentProjectId) sel.value = currentProjectId;
+  } catch(e) {}
+}
+async function createProject() {
+  const name = prompt('프로젝트 이름을 입력하세요');
+  if (!name) return;
+  try {
+    const res = await fetch('/.netlify/functions/supabase', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ action:'saveProject', data:{ name } })
+    });
+    const d = await res.json();
+    const id = Array.isArray(d) ? d[0]?.id : d?.id;
+    if (id) currentProjectId = id;
+    await loadProjects();
+    const sel = document.getElementById('projectSelect');
+    if (sel && id) sel.value = id;
+    showToast('프로젝트 생성됐어요');
+  } catch(e) { showToast('생성 실패'); }
+}
+function onProjectChange() {
+  const sel = document.getElementById('projectSelect');
+  currentProjectId = sel.value ? parseInt(sel.value) : null;
+  loadKBList();
+}
 window.addEventListener('DOMContentLoaded', () => {
   ['흥미','재미','정보','공감'].forEach(c => updateChkStyle(c));
   const saved = localStorage.getItem('threads_token');
   if (saved) document.getElementById('threadsToken').value = saved;
+  loadProjects();
   loadKBList();
   loadSavedContents();
 });
@@ -559,7 +634,8 @@ async function learnFiles() {
           keywords: JSON.stringify(parsed.keywords || []),
           audience: parsed.audience || '',
           content_type: parsed.contentType || '',
-          summary: parsed.summary || ''
+          summary: parsed.summary || '',
+          project_id: currentProjectId || null
         }})
       }).then(r => r.json()).then(saved => {
         const kbId = Array.isArray(saved) ? saved[0]?.id : saved?.id;
@@ -573,7 +649,7 @@ async function learnFiles() {
         if (parsed.parts && parsed.parts.length > 0) {
           fetch('/.netlify/functions/supabase', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'saveParts', data: parsed.parts.map(p => ({ kb_id: kbId, type: p.type, content: p.content })) })
+            body: JSON.stringify({ action: 'saveParts', data: parsed.parts.map(p => ({ kb_id: kbId, type: p.type, content: p.content, source: '원본' })) })
           });
         }
       });
@@ -618,6 +694,7 @@ async function generateContent() {
   showSkeleton();
 
   const selectedCats = getSelectedCats();
+  const selectedTrust = getSelectedTrust();
   if (selectedCats.length === 0) { showToast('속성을 하나 이상 선택해주세요'); btn.disabled = false; btn.textContent = '✦ 콘텐츠 생성하기'; return; }
 
   const personaHint = document.getElementById('personaHint').value.trim();
@@ -637,6 +714,7 @@ async function generateContent() {
 ## 생성 조건
 - 타이틀 개수: ${titleCount}개
 - 필수 포함 속성: ${selectedCats.join(', ')} → 생성되는 모든 타이틀에 이 속성들이 반드시 다 포함되어야 함. 단 타이틀마다 어떤 속성이 더 강하게 느껴지는지는 달라도 됨.
+- 도입부 신뢰 요소: ${selectedTrust.length ? selectedTrust.join(', ') + ' 요소를 도입부에 자연스럽게 녹여낼 것' : '없음'}
 ${personaHint ? `- 페르소나 힌트: ${personaHint}` : ''}
 ${toneHint ? `- 톤 힌트: ${toneHint}` : ''}
 
@@ -677,7 +755,7 @@ ${toneHint ? `톤: ${toneHint}` : ''}
     // 순차 실행 (rate limit 방지)
     const resMeta = await fetch("/.netlify/functions/claude", {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ model:'claude-sonnet-4-5', max_tokens:8000, messages:[{ role:'user', content:promptMeta }] })
+      body: JSON.stringify({ model:'claude-sonnet-4-5', max_tokens:25000, messages:[{ role:'user', content:promptMeta }] })
     });
     const dMeta = await resMeta.json();
     if (dMeta.error) throw new Error(dMeta.error.message);
@@ -686,7 +764,7 @@ ${toneHint ? `톤: ${toneHint}` : ''}
 
     const resBody = await fetch("/.netlify/functions/claude", {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ model:'claude-sonnet-4-5', max_tokens:8000, messages:[{ role:'user', content:promptBody }] })
+      body: JSON.stringify({ model:'claude-sonnet-4-5', max_tokens:25000, messages:[{ role:'user', content:promptBody }] })
     });
     const dBody = await resBody.json();
     if (dBody.error) throw new Error(dBody.error.message);
@@ -769,6 +847,13 @@ function renderResults() {
           </div>
         </div>
         <div class="cb-body" id="cb-feedback" style="display:flex;flex-direction:column;gap:6px;"></div>
+        <div style="padding:10px 14px;border-top:1px solid var(--border);">
+          <div style="font-size:10px;font-weight:700;letter-spacing:1px;color:var(--text3);margin-bottom:6px;">직접 피드백</div>
+          <div style="display:flex;gap:6px;">
+            <textarea id="my-feedback" placeholder="내 피드백 입력..." style="flex:1;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;padding:8px;font-size:12px;color:var(--text);resize:none;height:60px;font-family:Noto Sans KR,sans-serif;outline:none;"></textarea>
+            <button onclick="applyMyFeedback()" style="padding:6px 12px;background:var(--accent);border:none;border-radius:6px;color:#fff;font-size:11px;cursor:pointer;">반영</button>
+          </div>
+        </div>
       </div>
       <div class="cb">
         <div class="cb-head">
@@ -786,8 +871,13 @@ function renderResults() {
 
 function selTitle(i) {
   selTitleIdx = i;
-  renderResults();
+  // 타이틀 카드 선택 표시만 업데이트 (피드백 블록 유지)
+  document.querySelectorAll('.title-card').forEach((c,idx) => c.classList.toggle('sel', idx===i));
 }
+
+
+
+
 
 // 재각색: 선택된 타이틀 기준으로 본문 재생성
 // 참고 파일: kb 객체 (학습된 파일 요약)
@@ -826,7 +916,7 @@ ${partsText || (kb.keyMessages||[]).map(m => `[메시지] ${m}`).join('\n')}
   try {
     const res = await fetch("/.netlify/functions/claude", {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ model:'claude-sonnet-4-5', max_tokens:8000, messages:[{ role:'user', content:prompt }] })
+      body: JSON.stringify({ model:'claude-sonnet-4-5', max_tokens:25000, messages:[{ role:'user', content:prompt }] })
     });
     const d = await res.json();
     if (d.error) throw new Error(d.error.message);
@@ -934,7 +1024,7 @@ async function runDirectorReview() {
     const reviews = await Promise.all(DIRECTORS.map(d =>
       fetch('/.netlify/functions/claude', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: 'claude-sonnet-4-5', max_tokens: 2000,
+        body: JSON.stringify({ model: 'claude-sonnet-4-5', max_tokens:25000,
           messages: [{ role: 'user', content:
             `당신은 ${d.name}입니다. ${d.role}.
 
@@ -989,6 +1079,35 @@ async function runDirectorReview() {
   }
 }
 
+async function applyMyFeedback() {
+  const input = document.getElementById('my-feedback');
+  if (!input || !input.value.trim()) { showToast('피드백을 입력해주세요'); return; }
+  const bodyEl = document.getElementById('cb-body');
+  if (!bodyEl) return;
+  const bodyText = bodyEl.innerText.trim().slice(0,3000);
+  const myFeedback = input.value.trim();
+  bodyEl.innerHTML = '<span style="color:var(--text3)">피드백 반영 중...</span>';
+  try {
+    const res = await fetch('/.netlify/functions/claude', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ model:'claude-sonnet-4-5', max_tokens:25000,
+        messages:[{ role:'user', content:`아래 본문에 내 피드백을 반영해서 재작성하세요.
+
+본문:
+${bodyText}
+
+피드백:
+${myFeedback}
+
+규칙: 타이틀 주제 하나로 일관된 맥락 유지. 이모지 금지. 텍스트만 반환.` }] })
+    });
+    const d = await res.json();
+    if (d.error) throw new Error(d.error.message);
+    bodyEl.textContent = d.content[0].text.trim();
+    input.value = '';
+  } catch(e) { bodyEl.textContent = '오류가 발생했습니다.'; }
+}
+
 async function rewriteWithFeedback() {
   const bodyEl = document.getElementById('cb-body');
   if (!bodyEl) return;
@@ -1009,7 +1128,7 @@ async function rewriteWithFeedback() {
   try {
     const res = await fetch('/.netlify/functions/claude', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: 'claude-sonnet-4-5', max_tokens: 8000,
+      body: JSON.stringify({ model: 'claude-sonnet-4-5', max_tokens:25000,
         messages: [{ role: 'user', content:
           `아래 본문을 피드백을 반영해서 재각색하세요.
 
@@ -1094,7 +1213,7 @@ ${text}`;
   try {
     const res = await fetch("/.netlify/functions/claude", {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ model:'claude-sonnet-4-5', max_tokens:8000,
+      body: JSON.stringify({ model:'claude-sonnet-4-5', max_tokens:25000,
         messages:[{ role:'user', content:prompt }] })
     });
     const d = await res.json();
@@ -1261,7 +1380,7 @@ async function loadKBList() {
   try {
     const res = await fetch('/.netlify/functions/supabase', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'loadKB' })
+      body: JSON.stringify({ action: 'loadKB', data: currentProjectId ? { project_id: currentProjectId } : {} })
     });
     const data = await res.json();
     const el = document.getElementById('kbList');
@@ -1321,7 +1440,7 @@ async function loadAllKB(kbList) {
     summary: kbList.map(k => k.summary).filter(Boolean).join(' / '),
     context: contextText,
     parts: allParts,
-    _count: kbList.length
+    _count: kbList.length, _id: kbList[0]?.id
   };
   renderKB();
   document.getElementById('genBtn').disabled = false;
