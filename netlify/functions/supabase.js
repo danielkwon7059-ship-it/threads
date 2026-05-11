@@ -36,12 +36,63 @@ exports.handler = async (event) => {
       return { statusCode: 200, headers, body: JSON.stringify(result) };
     }
 
+    if (action === 'saveProject') {
+      const res = await fetch(`${SUPA_URL}/rest/v1/projects`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}`, 'Prefer': 'return=representation' },
+        body: JSON.stringify(data)
+      });
+      const result = await res.json();
+      return { statusCode: 200, headers, body: JSON.stringify(result) };
+    }
+
+    if (action === 'loadProjects') {
+      const res = await fetch(`${SUPA_URL}/rest/v1/projects?order=created_at.desc`, {
+        headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}` }
+      });
+      const result = await res.json();
+      return { statusCode: 200, headers, body: JSON.stringify(result) };
+    }
+
+    if (action === 'deleteProject') {
+      const id = data?.id;
+      await Promise.all([
+        fetch(`${SUPA_URL}/rest/v1/projects?id=eq.${id}`, { method: 'DELETE', headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}` } }),
+        fetch(`${SUPA_URL}/rest/v1/knowledge_base?project_id=eq.${id}`, { method: 'DELETE', headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}` } })
+      ]);
+      return { statusCode: 200, headers, body: JSON.stringify({ ok: true }) };
+    }
+
+    if (action === 'saveProject') {
+      const res = await fetch(`${SUPA_URL}/rest/v1/projects`, {
+        method: 'POST',
+        headers: { 'Content-Type':'application/json', 'apikey':SUPA_KEY, 'Authorization':`Bearer ${SUPA_KEY}`, 'Prefer':'return=representation' },
+        body: JSON.stringify(data)
+      });
+      return { statusCode:200, headers, body: JSON.stringify(await res.json()) };
+    }
+
+    if (action === 'loadProjects') {
+      const res = await fetch(`${SUPA_URL}/rest/v1/projects?order=created_at.desc`, {
+        headers: { 'apikey':SUPA_KEY, 'Authorization':`Bearer ${SUPA_KEY}` }
+      });
+      return { statusCode:200, headers, body: JSON.stringify(await res.json()) };
+    }
+
+    if (action === 'deleteProject') {
+      await fetch(`${SUPA_URL}/rest/v1/projects?id=eq.${data.id}`, {
+        method:'DELETE', headers:{ 'apikey':SUPA_KEY, 'Authorization':`Bearer ${SUPA_KEY}` }
+      });
+      return { statusCode:200, headers, body: JSON.stringify({ ok:true }) };
+    }
+
     if (action === 'loadKB') {
-      const res = await fetch(`${SUPA_URL}/rest/v1/knowledge_base?order=created_at.desc&limit=10`, {
-        headers: {
-          'apikey': SUPA_KEY,
-          'Authorization': `Bearer ${SUPA_KEY}`
-        }
+      const projectId = data?.project_id;
+      const url = projectId
+        ? `${SUPA_URL}/rest/v1/knowledge_base?project_id=eq.${projectId}&order=created_at.desc&limit=20`
+        : `${SUPA_URL}/rest/v1/knowledge_base?order=created_at.desc&limit=20`;
+      const res = await fetch(url, {
+        headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}` }
       });
       const result = await res.json();
       return { statusCode: 200, headers, body: JSON.stringify(result) };
