@@ -90,7 +90,7 @@ exports.handler = async (event) => {
       const projectId = data?.project_id;
       const url = projectId
         ? `${SUPA_URL}/rest/v1/knowledge_base?project_id=eq.${projectId}&order=created_at.desc&limit=20`
-        : `${SUPA_URL}/rest/v1/knowledge_base?order=created_at.desc&limit=20`;
+        : `${SUPA_URL}/rest/v1/knowledge_base?project_id=is.null&order=created_at.desc&limit=20`;
       const res = await fetch(url, {
         headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}` }
       });
