@@ -1380,7 +1380,7 @@ async function loadKBList() {
   try {
     const res = await fetch('/.netlify/functions/supabase', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'loadKB', data: currentProjectId ? { project_id: currentProjectId } : {} })
+      body: JSON.stringify({ action: 'loadKB', data: { project_id: currentProjectId || null } })
     });
     const data = await res.json();
     const el = document.getElementById('kbList');
