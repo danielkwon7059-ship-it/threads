@@ -693,7 +693,8 @@ async function generateContent() {
   btn.disabled = true; btn.textContent = '생성 중...';
   showSkeleton();
 
-  await refreshKBSelection();
+  refreshKBSelection();
+
 
   const PERSPECTIVES = [
     '실패 경험에서 얻은 교훈 관점으로',
@@ -1441,7 +1442,7 @@ async function loadAllKB(kbList) {
   let audience = '';
   let tone = '';
 
-  // 전체 KB 목록 저장 (생성 시 랜덤 선택용)
+  // 전체 KB 목록 저장
   kb = {
     _allKBList: kbList,
     _allPartsCache: {},
@@ -1456,19 +1457,36 @@ async function loadAllKB(kbList) {
     parts: []
   };
 
-  // 첫 번째 KB 기본 로드
-  await refreshKBSelection();
+  // 모든 parts 미리 캐싱 (백그라운드)
+  Promise.all(kbList.map(k =>
+    fetch('/.netlify/functions/supabase', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'loadParts', data: { kb_id: k.id } })
+    }).then(r => r.json()).then(d => { kb._allPartsCache[k.id] = d; })
+    .catch(() => {})
+  )).then(() => {
+    refreshKBSelection();
+  });
+
+  // 첫 로드는 기본값으로
+  const firstMessages = [];
+  const firstKeywords = [];
+  try { firstMessages.push(...JSON.parse(kbList[0]?.key_messages||'[]')); } catch(e) {}
+  try { firstKeywords.push(...JSON.parse(kbList[0]?.keywords||'[]')); } catch(e) {}
+  kb.keyMessages = firstMessages;
+  kb.keywords = firstKeywords;
+  kb.context = kbList[0]?.summary || '';
+
   renderKB();
   document.getElementById('genBtn').disabled = false;
   setStep(2);
 }
 
 // 생성할 때마다 랜덤으로 KB 선택
-async function refreshKBSelection() {
+function refreshKBSelection() {
   if (!kb || !kb._allKBList) return;
   const all = kb._allKBList;
   const pickCount = Math.min(5, Math.max(3, Math.floor(all.length * 0.4)));
-  // 랜덤 섞기
   const shuffled = [...all].sort(() => Math.random() - 0.5);
   const selected = shuffled.slice(0, pickCount);
 
@@ -1477,25 +1495,18 @@ async function refreshKBSelection() {
   const allKeywords = [];
   let contextText = '';
 
-  const partsResults = await Promise.all(selected.map(k => {
-    if (kb._allPartsCache[k.id]) return Promise.resolve(kb._allPartsCache[k.id]);
-    return fetch('/.netlify/functions/supabase', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'loadParts', data: { kb_id: k.id } })
-    }).then(r => r.json()).then(d => { kb._allPartsCache[k.id] = d; return d; })
-      .catch(() => ({ context: '', parts: [] }));
-  }));
-
-  selected.forEach((k, i) => {
-    const d = partsResults[i];
-    if (d.context) contextText += (contextText ? '\n' : '') + d.context;
-    if (d.parts) allParts.push(...d.parts);
+  selected.forEach(k => {
+    const d = kb._allPartsCache[k.id];
+    if (d) {
+      if (d.context) contextText += (contextText ? '\n' : '') + d.context;
+      if (d.parts) allParts.push(...d.parts);
+    }
     try { allMessages.push(...JSON.parse(k.key_messages||'[]')); } catch(e) {}
     try { allKeywords.push(...JSON.parse(k.keywords||'[]')); } catch(e) {}
   });
 
-  kb.context = contextText;
-  kb.parts = allParts;
+  kb.context = contextText || kb.context;
+  kb.parts = allParts.length ? allParts : kb.parts;
   kb.keyMessages = [...new Set(allMessages)];
   kb.keywords = [...new Set(allKeywords)];
   kb.topic = selected[0]?.topic || kb.topic;
