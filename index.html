@@ -693,7 +693,7 @@ async function generateContent() {
   btn.disabled = true; btn.textContent = '생성 중...';
   showSkeleton();
 
-  const selectedCats = getSelectedCats();
+  await refreshKBSelection(); const selectedCats = getSelectedCats();
   const selectedTrust = getSelectedTrust();
   if (selectedCats.length === 0) { showToast('속성을 하나 이상 선택해주세요'); btn.disabled = false; btn.textContent = '✦ 콘텐츠 생성하기'; return; }
 
@@ -1421,18 +1421,52 @@ async function loadAllKB(kbList) {
   let audience = '';
   let tone = '';
 
-  // 모든 KB의 parts를 병렬로 불러오기
-  const partsResults = await Promise.all(kbList.map(k =>
-    fetch('/.netlify/functions/supabase', {
+  // 전체 KB 목록 저장 (생성 시 랜덤 선택용)
+  kb = {
+    _allKBList: kbList,
+    _allPartsCache: {},
+    _count: kbList.length, _id: kbList[0]?.id,
+    topic: kbList[0]?.topic || '',
+    audience: kbList[0]?.audience || '',
+    tone: kbList[0]?.tone || '',
+    keyMessages: [],
+    keywords: [],
+    summary: kbList.map(k => k.summary).filter(Boolean).join(' / '),
+    context: '',
+    parts: []
+  };
+
+  // 첫 번째 KB 기본 로드
+  await refreshKBSelection();
+  renderKB();
+  document.getElementById('genBtn').disabled = false;
+  setStep(2);
+}
+
+// 생성할 때마다 랜덤으로 KB 선택
+async function refreshKBSelection() {
+  if (!kb || !kb._allKBList) return;
+  const all = kb._allKBList;
+  const pickCount = Math.min(5, Math.max(3, Math.floor(all.length * 0.4)));
+  // 랜덤 섞기
+  const shuffled = [...all].sort(() => Math.random() - 0.5);
+  const selected = shuffled.slice(0, pickCount);
+
+  const allParts = [];
+  const allMessages = [];
+  const allKeywords = [];
+  let contextText = '';
+
+  const partsResults = await Promise.all(selected.map(k => {
+    if (kb._allPartsCache[k.id]) return Promise.resolve(kb._allPartsCache[k.id]);
+    return fetch('/.netlify/functions/supabase', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'loadParts', data: { kb_id: k.id } })
-    }).then(r => r.json()).catch(() => ({ context: '', parts: [] }))
-  ));
+    }).then(r => r.json()).then(d => { kb._allPartsCache[k.id] = d; return d; })
+      .catch(() => ({ context: '', parts: [] }));
+  }));
 
-  kbList.forEach((k, i) => {
-    if (k.topic) topic = k.topic;
-    if (k.audience) audience = k.audience;
-    if (k.tone) tone = k.tone;
+  selected.forEach((k, i) => {
     const d = partsResults[i];
     if (d.context) contextText += (contextText ? '\n' : '') + d.context;
     if (d.parts) allParts.push(...d.parts);
@@ -1440,19 +1474,12 @@ async function loadAllKB(kbList) {
     try { allKeywords.push(...JSON.parse(k.keywords||'[]')); } catch(e) {}
   });
 
-  kb = {
-    topic, audience, tone,
-    keyMessages: [...new Set(allMessages)],
-    keywords: [...new Set(allKeywords)],
-    summary: kbList.map(k => k.summary).filter(Boolean).join(' / '),
-    context: contextText,
-    parts: allParts,
-    _count: kbList.length, _id: kbList[0]?.id
-  };
-  renderKB();
-  document.getElementById('genBtn').disabled = false;
-  setStep(2);
-}
+  kb.context = contextText;
+  kb.parts = allParts;
+  kb.keyMessages = [...new Set(allMessages)];
+  kb.keywords = [...new Set(allKeywords)];
+  kb.topic = selected[0]?.topic || kb.topic;
+  kb.audience = selected[0]?.audience || kb.audience;
 
 async function moveKB(id) {
   const sel = document.getElementById('projectSelect');
