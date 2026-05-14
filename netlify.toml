@@ -6,3 +6,9 @@
 
 [functions.claude]
   timeout = 26
+
+[functions.supabase]
+  timeout = 26
+
+[functions.threads]
+  timeout = 26
