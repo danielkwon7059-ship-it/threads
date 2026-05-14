@@ -711,6 +711,8 @@ async function generateContent() {
     '시간 효율 극대화 관점으로'
   ];
   const randomPerspective = PERSPECTIVES[Math.floor(Math.random() * PERSPECTIVES.length)];
+  const PERSONAS = ['20대 취준생','30대 직장인 수험생','40대 재도전자','육아 중인 주부 수험생','지방 거주 수험생','재수생','직장 병행 수험생','처음 시작하는 완전 초보','몇 번 떨어진 경험자','단기 합격을 목표로 하는 사람'];
+  const randomPersona = PERSONAS[Math.floor(Math.random() * PERSONAS.length)];
 
   const selectedCats = getSelectedCats();
   const selectedTrust = getSelectedTrust();
@@ -732,7 +734,9 @@ async function generateContent() {
 
 ## 생성 조건
 - 타이틀 개수: ${titleCount}개
-- 이번 콘텐츠 관점: ${randomPerspective} (타이틀에 이 관점이 반영되도록)
+- 이번 콘텐츠 관점: ${randomPerspective} (타이틀에 이 관점이 강하게 반영되도록. 매번 다른 각도로 접근할 것)
+- 이번 타이틀의 주인공 페르소나: ${randomPersona} (이 사람의 상황과 감정이 타이틀에 녹아들도록)
+- 같은 주제라도 완전히 다른 각도, 다른 표현, 다른 감정으로 접근할 것. 뻔한 표현 금지.
 - 필수 포함 속성: ${selectedCats.join(', ')} → 생성되는 모든 타이틀에 이 속성들이 반드시 다 포함되어야 함. 단 타이틀마다 어떤 속성이 더 강하게 느껴지는지는 달라도 됨.
 - 도입부 신뢰 요소: ${selectedTrust.length ? selectedTrust.join(', ') + ' 요소를 도입부에 자연스럽게 녹여낼 것' : '없음'}
 ${personaHint ? `- 페르소나 힌트: ${personaHint}` : ''}
