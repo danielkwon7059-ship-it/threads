@@ -1480,6 +1480,7 @@ async function refreshKBSelection() {
   kb.keywords = [...new Set(allKeywords)];
   kb.topic = selected[0]?.topic || kb.topic;
   kb.audience = selected[0]?.audience || kb.audience;
+}
 
 async function moveKB(id) {
   const sel = document.getElementById('projectSelect');
